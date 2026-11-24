@@ -1,0 +1,9 @@
+{
+  "status": "proposed; not implemented by smoke test",
+  "vocab_size": 8192,
+  "context": 512,
+  "width": 384,
+  "heads": 6,
+  "layers": 6,
+  "notes": "Parameter count must be measured and dimensions revised toward 15M before first run."
+}
