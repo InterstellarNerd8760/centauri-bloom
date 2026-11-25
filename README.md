@@ -8,7 +8,26 @@ An independent, community-driven experiment in training a small language model f
 
 ## Status
 
-Founding phase. No trained weights or live distributed network exist yet. The first goal is a reproducible two-worker experiment, not a production chatbot.
+Founding phase. No verified official model release or live distributed network exists yet. The first goal is a reproducible two-worker experiment, not a production chatbot. Community image and browser-based text training experiments are underway; their compatibility and reproducibility remain unverified.
+
+## Project resources
+
+GitHub is the canonical home for project documentation, source code, technical decisions and issues.
+
+- [Design system](DESIGN.md) — shared visual standards for Bloom websites and tools.
+- [Architecture](docs/architecture.md) — model and collaborative training protocol.
+- [Roadmap](docs/roadmap.md) — development milestones.
+- [Governance](GOVERNANCE.md) and [contributing](CONTRIBUTING.md) — community workflow.
+- [Community model website](https://mironox.de/Bloom) and [Tiny GPT Trainer](https://mironox.de/Bloom/Training) — independent experimental tools, not verified official releases.
+- Hugging Face — planned canonical storage for reviewed model weights and licensed datasets; organization setup pending confirmation.
+
+### Community experiments
+
+The Tiny GPT Trainer advertises WebGPU training, a 14.9M-parameter byte-level transformer (8 layers, hidden dimension 392, 8 attention heads, context 128 bytes, vocabulary 256), JSON datasets, checkpoint import/export and GGUF export. These are interface-reported specifications, not source-verified results. A mobile training attempt did not complete successfully. The trainer source, exact checkpoint format and inference compatibility need review before integration.
+
+An experimental text-conditioned image checkpoint has also been shared privately. Its training code, dataset provenance, license and outputs need review before any public release. No contributor weights or datasets are published here without permission.
+
+The proposed text baseline in this repository is separate from the browser prototype until architecture and checkpoint compatibility have been demonstrated. Cloud training is a planned option, not an active service.
 
 ## Quick start
 
