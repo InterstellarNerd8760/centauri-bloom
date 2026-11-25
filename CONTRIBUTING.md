@@ -4,4 +4,4 @@ Everyone is welcome to propose work. Start with an issue describing the task and
 
 Run the local smoke tests before submitting code. Never run unreviewed scripts from chat, share credentials, upload private information or submit datasets without permission. Use bounded runs on authorized hardware only. Submit code and experiment metadata through GitHub; do not submit arbitrary executable artifacts. No shared accounts or tokens.
 
-The project's code license is pending maintainer approval; discuss licensing before contributing original code intended for redistribution. Dataset and model licenses will be decided separately.
+Original code and documentation contributions intentionally submitted for inclusion are licensed under [Apache-2.0](LICENSE), unless explicitly agreed otherwise. Submit only work you have permission to contribute and preserve third-party notices. Weights and datasets require separate documented rights and licensing review before publication. Follow the [Open Source AI release policy](docs/open-source-ai.md).

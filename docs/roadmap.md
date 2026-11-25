@@ -2,7 +2,7 @@
 
 ## 0 — Scaffold
 - Review model, CPU smoke test and aggregation baseline.
-- Approve code license, conduct and maintainers.
+- Code license: Apache-2.0. Review conduct and maintainers.
 - Establish a reproducible dependency lock and CI.
 
 ## 1 — Real text baseline
@@ -16,6 +16,6 @@
 - Record loss, token count, wall time, failures and rollback tests.
 
 ## 3 — Community pilot
-- Publish a reviewed contributor notebook and model card.
+- Publish a reviewed contributor notebook and model card; review the [OSAID release checklist](open-source-ai.md).
 - Enable controlled artifact submission and validation; no automatic execution of contributor code.
 - Publish measured results before expanding compute or model size.
