@@ -21,6 +21,8 @@ GitHub is the canonical home for project documentation, source code, technical d
 - [Design system](DESIGN.md) — shared visual standards for Bloom websites and tools.
 - [Architecture](docs/architecture.md) — model and collaborative training protocol.
 - [Roadmap](docs/roadmap.md) — development milestones.
+- [Contributor training notebook](notebooks/contributor-training.ipynb) — bounded training and local artifact export.
+- [Training guide](docs/training.md) — saved baseline, CPU/CUDA and continuation.
 - [Text dataset and tokenizer](docs/text-dataset.md) — offline example, corpus reconstruction and checkpoint metadata.
 - [Governance](GOVERNANCE.md) and [contributing](CONTRIBUTING.md) — community workflow.
 - [Community model website](https://mironox.de/Bloom) and [Tiny GPT Trainer](https://mironox.de/Bloom/Training) — independent experimental tools, not verified official releases.
