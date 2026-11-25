@@ -17,3 +17,5 @@ jobs:
       - run: python -m pip install -e '.[test]'
       - run: python -m pytest -q
       - run: python -m bloom.smoke
+      - run: python -m bloom.dataset build tests/fixtures/text/sources.json runs/text-fixture
+      - run: python -m bloom.text_smoke runs/text-fixture

@@ -21,6 +21,7 @@ GitHub is the canonical home for project documentation, source code, technical d
 - [Design system](DESIGN.md) — shared visual standards for Bloom websites and tools.
 - [Architecture](docs/architecture.md) — model and collaborative training protocol.
 - [Roadmap](docs/roadmap.md) — development milestones.
+- [Text dataset and tokenizer](docs/text-dataset.md) — offline example, corpus reconstruction and checkpoint metadata.
 - [Governance](GOVERNANCE.md) and [contributing](CONTRIBUTING.md) — community workflow.
 - [Community model website](https://mironox.de/Bloom) and [Tiny GPT Trainer](https://mironox.de/Bloom/Training) — independent experimental tools, not verified official releases.
 - Hugging Face — planned canonical storage for reviewed model weights and licensed datasets; organization setup pending confirmation.
@@ -48,6 +49,16 @@ python -m bloom.smoke
 ```
 
 On Windows activate using the PowerShell script in the virtual environment's Scripts directory. The smoke test is CPU-only, uses synthetic data, and does not upload results.
+
+Run the text pipeline offline from the repository root with the bundled fixture:
+
+```sh
+python -m bloom.dataset build tests/fixtures/text/sources.json runs/text-fixture
+python -m bloom.dataset verify runs/text-fixture
+python -m bloom.text_smoke runs/text-fixture
+```
+
+For the initial English corpus and its redistribution terms, see the [dataset card](datasets/public-domain-v1/README.md).
 
 ## Roadmap
 
