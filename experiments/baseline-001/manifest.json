@@ -1,0 +1,33 @@
+{
+  "config_sha256": "a26a05122cd080503c077107b952a52ec8893c24adbb68ee1a5bba1c752c47d5",
+  "dataset_id": "public-domain-english",
+  "dataset_sha256": "d92f0164dba7481f21202faf6b04299a936796674f78c7b1a0538da857724518",
+  "dataset_version": "1.0.0",
+  "kind": "experimental_text_baseline",
+  "parent_sha256": null,
+  "train_shard_ids": [
+    "train-5ef3c684f96f4d60b90ded7658d1f93f7f69483d8e169a696a87d726fdfe1bea"
+  ],
+  "training": {
+    "batch_size": 8,
+    "context_length": 32,
+    "cpu_threads": 1,
+    "device": "cpu",
+    "device_name": "x86_64",
+    "eval_batches": 16,
+    "gradient_clip_norm": 1.0,
+    "learning_rate": 0.001,
+    "max_tokens": 100000,
+    "optimizer": "AdamW",
+    "python_version": "3.11.18",
+    "seed": 42,
+    "steps": 100,
+    "torch_version": "2.15.0+cpu"
+  },
+  "validation_shard_ids": [
+    "validation-80bbe3d819d1b519693cbecb3a7e9839042cc7d9273a094af2f0c80d9e26a361"
+  ],
+  "version": 1,
+  "weights_bytes": 542344,
+  "weights_sha256": "f44d8fa110384e32eb917cd6e102924e8af5a006fa4f8d32f9c47314d8f84027"
+}
