@@ -6,6 +6,10 @@ An independent, community-driven experiment in training a small language model f
 
 [Project page](https://westonrosch.com/projects/centauri-bloom/) · [Discord](https://discord.gg/mThAEaEgWf) · [Contribution guide](CONTRIBUTING.md)
 
+## License and open AI commitment
+
+Original project code and documentation are licensed under [Apache License 2.0](LICENSE), except where otherwise noted. Bloom targets the [Open Source AI Definition 1.0](https://opensource.org/ai/open-source-ai-definition) for official releases. See our [release policy and checklist](docs/open-source-ai.md) for model and dataset licensing, reproducibility and review requirements. No model is claimed to conform until reviewed.
+
 ## Status
 
 Founding phase. No verified official model release or live distributed network exists yet. The first goal is a reproducible two-worker experiment, not a production chatbot. Community image and browser-based text training experiments are underway; their compatibility and reproducibility remain unverified.
@@ -48,7 +52,7 @@ On Windows activate using the PowerShell script in the virtual environment's Scr
 ## Roadmap
 
 1. Review the tiny causal transformer and tokenizer baseline.
-2. Agree on code, dataset and weight licensing; document data provenance.
+2. Apply the approved code license; review dataset and weight licenses and document data provenance.
 3. Establish a reproducible single-worker baseline.
 4. Train two workers from the same checkpoint on disjoint data; validate their updates and compare aggregation with the baseline.
 5. Publish results, checkpoint formats and a volunteer notebook. Scale only after measuring reliability and available compute.
