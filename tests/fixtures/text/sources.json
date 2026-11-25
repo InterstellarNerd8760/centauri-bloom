@@ -1,0 +1,96 @@
+{
+  "dataset_id": "bloom-offline-fixture",
+  "dataset_version": "1.0.0",
+  "sources": [
+    {
+      "id": "01-clouds",
+      "title": "Clouds",
+      "author": "Centauri Bloom contributors",
+      "path": "01-clouds.txt",
+      "sha256": "b1d83f39bb0a1264e2acbb48986bbadb335ba26d0542a51eeff39c2552237cae",
+      "format": "plain-text-v1",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "02-library",
+      "title": "Library",
+      "author": "Centauri Bloom contributors",
+      "path": "02-library.txt",
+      "sha256": "95728f368ec8b680e1fb72e4a2e6901014c59d800d1cedb23ff85004f6c044c7",
+      "format": "plain-text-v1",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "03-garden",
+      "title": "Garden",
+      "author": "Centauri Bloom contributors",
+      "path": "03-garden.txt",
+      "sha256": "9285f50e940b521541f4468568dde921e4e1538dcce9d1e060f13e8c2748382e",
+      "format": "plain-text-v1",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "04-ferry",
+      "title": "Ferry",
+      "author": "Centauri Bloom contributors",
+      "path": "04-ferry.txt",
+      "sha256": "f05a213c03f80df352a12cb6070da4cc0d0e6d65c73d42bdbd28dc15962f9019",
+      "format": "plain-text-v1",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "05-orchard",
+      "title": "Orchard",
+      "author": "Centauri Bloom contributors",
+      "path": "05-orchard.txt",
+      "sha256": "4245305d239499f3ba8657ac9c5909e9967702dfbac500e0b416e1866ebc4c14",
+      "format": "plain-text-v1",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "06-workshop",
+      "title": "Workshop",
+      "author": "Centauri Bloom contributors",
+      "path": "06-workshop.txt",
+      "sha256": "6d0a31547087eeda5954546be4c2ddb18764d9bb58122f3cd0c057c67f8103ca",
+      "format": "plain-text-v1",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "07-shore",
+      "title": "Shore",
+      "author": "Centauri Bloom contributors",
+      "path": "07-shore.txt",
+      "sha256": "7903c71ba995394b6c5a8da88e3bf43341fe4222a5173f90b3b8f0e3151e90cf",
+      "format": "plain-text-v1",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "08-kite",
+      "title": "Kite",
+      "author": "Centauri Bloom contributors",
+      "path": "08-kite.txt",
+      "sha256": "c8fb2386a20454c9416cec95f5e63d65227542ccfea9e630bb6f09ff6d988567",
+      "format": "plain-text-v1",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0"
+    },
+    {
+      "id": "09-clouds-duplicate",
+      "title": "Clouds duplicate",
+      "author": "Centauri Bloom contributors",
+      "path": "09-clouds-duplicate.txt",
+      "sha256": "83e484e7d036d18e20bde3f3a181ee53c451c09021a658cdc4480c12e1eaf0fc",
+      "format": "plain-text-v1",
+      "license": "Apache-2.0",
+      "license_url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ]
+}
