@@ -7,6 +7,8 @@ name = "centauri-bloom"
 version = "0.0.1"
 description = "Volunteer language-model training research scaffold"
 requires-python = ">=3.10"
+license = {file = "LICENSE"}
+classifiers = ["License :: OSI Approved :: Apache Software License"]
 dependencies = ["torch>=2.4,<3", "safetensors>=0.4,<1"]
 
 [project.optional-dependencies]
