@@ -1,0 +1,102 @@
+{
+  "dataset_id": "public-domain-english",
+  "dataset_version": "1.0.0",
+  "sources": [
+    {
+      "id": "pg-11",
+      "title": "Alice's Adventures in Wonderland",
+      "author": "Lewis Carroll",
+      "url": "https://raw.githubusercontent.com/GITenberg/Alice-s-Adventures-in-Wonderland_11/7f18748e114b994d5d9454d5793581bc0b9cf9d7/11-0.txt",
+      "sha256": "49a0b2726606e1290ac03a63978fa1dd1bd38a8d805704d98265f393533ea094",
+      "format": "gutenberg-text-v1",
+      "license": "Public domain in the USA",
+      "license_url": "https://www.gutenberg.org/policy/license.html",
+      "body_start": "CHAPTER I. Down the Rabbit-Hole",
+      "body_end": "End of Project Gutenberg’s Alice’s Adventures in Wonderland, by Lewis Carroll"
+    },
+    {
+      "id": "pg-41",
+      "title": "The Legend of Sleepy Hollow",
+      "author": "Washington Irving",
+      "url": "https://raw.githubusercontent.com/GITenberg/The-Legend-of-Sleepy-Hollow_41/5f864ee8e6fabb0167d60cc625e55da67830854a/41-0.txt",
+      "sha256": "9dbaa83e29c71f1e40fd986c470f5ad97412413ba05052c059885bc3e46c491b",
+      "format": "gutenberg-text-v1",
+      "license": "Public domain in the USA",
+      "license_url": "https://www.gutenberg.org/policy/license.html",
+      "body_start": "THE LEGEND OF SLEEPY HOLLOW",
+      "body_end": "End of Project Gutenberg’s The Legend of Sleepy Hollow, by Washington Irving"
+    },
+    {
+      "id": "pg-43",
+      "title": "The Strange Case of Dr. Jekyll and Mr. Hyde",
+      "author": "Robert Louis Stevenson",
+      "url": "https://raw.githubusercontent.com/GITenberg/The-Strange-Case-of-Dr.-Jekyll-and-Mr.-Hyde_43/534f1e1d3193ffaf351570cf808e0ee6db70efe9/43.txt",
+      "sha256": "13f5c813f305967a5bc1acecb52f76b9731df76f2c0796247c8aada68e85d3d7",
+      "format": "gutenberg-text-v1",
+      "license": "Public domain in the USA",
+      "license_url": "https://www.gutenberg.org/policy/license.html",
+      "body_start": "THE STRANGE CASE OF DR. JEKYLL AND MR. HYDE",
+      "body_end": "End of the Project Gutenberg EBook of The Strange Case Of Dr. Jekyll And Mr."
+    },
+    {
+      "id": "pg-46",
+      "title": "A Christmas Carol",
+      "author": "Charles Dickens",
+      "url": "https://raw.githubusercontent.com/GITenberg/A-Christmas-Carol_46/b173bd3787848ecbded8d036ed9f5326c738da19/46-0.txt",
+      "sha256": "919e060656548dd0bf5f615fe85932e67718b9a58e5a535d1ff7548c4380caeb",
+      "format": "gutenberg-text-v1",
+      "license": "Public domain in the USA",
+      "license_url": "https://www.gutenberg.org/policy/license.html",
+      "body_start": "A CHRISTMAS CAROL",
+      "body_end": "End of the Project Gutenberg EBook of A Christmas Carol, by Charles Dickens"
+    },
+    {
+      "id": "pg-289",
+      "title": "The Wind in the Willows",
+      "author": "Kenneth Grahame",
+      "url": "https://raw.githubusercontent.com/GITenberg/The-Wind-in-the-Willows_289/9032846214f647204585df2572cd19dd7fbc3c73/289-0.txt",
+      "sha256": "f875d0ae7c153741c516d4db2f3c1686f8dd79e341ea27dbc2167178a09cd587",
+      "format": "gutenberg-text-v1",
+      "license": "Public domain in the USA",
+      "license_url": "https://www.gutenberg.org/policy/license.html",
+      "body_start": "THE WIND IN THE WILLOWS",
+      "body_end": "End of Project Gutenberg’s The Wind in the Willows, by Kenneth Grahame"
+    },
+    {
+      "id": "pg-550",
+      "title": "Silas Marner",
+      "author": "George Eliot",
+      "url": "https://raw.githubusercontent.com/GITenberg/Silas-Marner_550/a4c56c3b0a355f69ceba3fb73adf25579ad3ddd9/550.txt",
+      "sha256": "46b39559666acdce85bfbea4d98df3b3db0e044bcbacd22f4a55ba86be76a189",
+      "format": "gutenberg-text-v1",
+      "license": "Public domain in the USA",
+      "license_url": "https://www.gutenberg.org/policy/license.html",
+      "body_start": "SILAS MARNER",
+      "body_end": "End of the Project Gutenberg EBook of Silas Marner, by George Eliot"
+    },
+    {
+      "id": "pg-1837",
+      "title": "The Prince and the Pauper",
+      "author": "Mark Twain",
+      "url": "https://raw.githubusercontent.com/GITenberg/The-Prince-and-the-Pauper_1837/e425ef5d138845955c87b4b07b683c7d019d1d0c/1837-0.txt",
+      "sha256": "cc8b70736946e043166e8f6e00704c42fe3c1fc404f6eebc14f5e1a3f6237799",
+      "format": "gutenberg-text-v1",
+      "license": "Public domain in the USA",
+      "license_url": "https://www.gutenberg.org/policy/license.html",
+      "body_start": "THE PRINCE AND THE PAUPER",
+      "body_end": "End of the Project Gutenberg EBook of The Prince and The Pauper,"
+    },
+    {
+      "id": "pg-1952",
+      "title": "The Yellow Wallpaper",
+      "author": "Charlotte Perkins Gilman",
+      "url": "https://raw.githubusercontent.com/GITenberg/The-Yellow-Wallpaper_1952/ce7c5bc1a5cf0fe23bcb265545a900365dbae29c/1952-0.txt",
+      "sha256": "fdd24cf8a952177d32321079a373ddbf4f98663aec8a8a0009bdff0e1ebbb622",
+      "format": "gutenberg-text-v1",
+      "license": "Public domain in the USA",
+      "license_url": "https://www.gutenberg.org/policy/license.html",
+      "body_start": "THE YELLOW WALLPAPER",
+      "body_end": "End of Project Gutenberg's The Yellow Wallpaper, by Charlotte Perkins Gilman"
+    }
+  ]
+}

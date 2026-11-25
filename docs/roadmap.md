@@ -6,8 +6,8 @@
 - Establish a reproducible dependency lock and CI.
 
 ## 1 — Real text baseline
-- Select and document a licensed dataset, held-out split and deduplication strategy.
-- Implement tokenizer, data loader, checkpoint manifest and a reproducible training run.
+- Use the [initial English corpus and offline fixture](text-dataset.md) with whole-document held-out splits and exact deduplication.
+- Run the CPU text demo with the byte tokenizer, data loader and dataset manifest. Implement checkpoint exchange and measure a reproducible single-worker baseline.
 - Choose model dimensions and confirm actual parameter count.
 
 ## 2 — Independent workers
