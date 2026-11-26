@@ -1,0 +1,1478 @@
+{
+  "version": "rft-eval-v1",
+  "seed": 47,
+  "prompt_format": "User: {prompt}\nAssistant:",
+  "sha256": "9dbda985c231b1d2b01047a7ee00542c8bf38924d365f0992e6939762e08ffb7",
+  "items": [
+    {
+      "id": "probe-00",
+      "source": "probe",
+      "prompt": "What is 12 times 5?",
+      "answer": "60",
+      "task": "exact-number"
+    },
+    {
+      "id": "probe-01",
+      "source": "probe",
+      "prompt": "What is 7 plus 8?",
+      "answer": "15",
+      "task": "exact-number"
+    },
+    {
+      "id": "probe-02",
+      "source": "probe",
+      "prompt": "Multiply 9 by 6.",
+      "answer": "54",
+      "task": "exact-number"
+    },
+    {
+      "id": "probe-03",
+      "source": "probe",
+      "prompt": "Subtract 15 from 40.",
+      "answer": "25",
+      "task": "exact-number"
+    },
+    {
+      "id": "probe-04",
+      "source": "probe",
+      "prompt": "What is 100 minus 37?",
+      "answer": "63",
+      "task": "exact-number"
+    },
+    {
+      "id": "probe-05",
+      "source": "probe",
+      "prompt": "What is Earth?",
+      "answer": null,
+      "task": "open"
+    },
+    {
+      "id": "probe-06",
+      "source": "probe",
+      "prompt": "Write a Python function that adds two numbers.",
+      "answer": null,
+      "task": "open"
+    },
+    {
+      "id": "probe-07",
+      "source": "probe",
+      "prompt": "Say hello politely.",
+      "answer": null,
+      "task": "open"
+    },
+    {
+      "id": "probe-08",
+      "source": "probe",
+      "prompt": "What is the capital of France?",
+      "answer": null,
+      "task": "open"
+    },
+    {
+      "id": "probe-09",
+      "source": "probe",
+      "prompt": "Can you be certain about every answer?",
+      "answer": null,
+      "task": "open"
+    },
+    {
+      "id": "arith-000",
+      "source": "arithmetic",
+      "prompt": "Multiply 1 by 16.",
+      "answer": "16",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-001",
+      "source": "arithmetic",
+      "prompt": "Multiply 1 by 19.",
+      "answer": "19",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-002",
+      "source": "arithmetic",
+      "prompt": "Multiply 12 by 36.",
+      "answer": "432",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-003",
+      "source": "arithmetic",
+      "prompt": "Multiply 15 by 17.",
+      "answer": "255",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-004",
+      "source": "arithmetic",
+      "prompt": "Multiply 17 by 27.",
+      "answer": "459",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-005",
+      "source": "arithmetic",
+      "prompt": "Multiply 18 by 13.",
+      "answer": "234",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-006",
+      "source": "arithmetic",
+      "prompt": "Multiply 18 by 34.",
+      "answer": "612",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-007",
+      "source": "arithmetic",
+      "prompt": "Multiply 21 by 30.",
+      "answer": "630",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-008",
+      "source": "arithmetic",
+      "prompt": "Multiply 21 by 31.",
+      "answer": "651",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-009",
+      "source": "arithmetic",
+      "prompt": "Multiply 22 by 26.",
+      "answer": "572",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-010",
+      "source": "arithmetic",
+      "prompt": "Multiply 24 by 25.",
+      "answer": "600",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-011",
+      "source": "arithmetic",
+      "prompt": "Multiply 24 by 37.",
+      "answer": "888",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-012",
+      "source": "arithmetic",
+      "prompt": "Multiply 32 by 31.",
+      "answer": "992",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-013",
+      "source": "arithmetic",
+      "prompt": "Multiply 34 by 28.",
+      "answer": "952",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-014",
+      "source": "arithmetic",
+      "prompt": "Multiply 37 by 3.",
+      "answer": "111",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-015",
+      "source": "arithmetic",
+      "prompt": "Multiply 4 by 6.",
+      "answer": "24",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-016",
+      "source": "arithmetic",
+      "prompt": "Multiply 45 by 37.",
+      "answer": "1665",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-017",
+      "source": "arithmetic",
+      "prompt": "Multiply 46 by 13.",
+      "answer": "598",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-018",
+      "source": "arithmetic",
+      "prompt": "Multiply 46 by 20.",
+      "answer": "920",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-019",
+      "source": "arithmetic",
+      "prompt": "Multiply 47 by 8.",
+      "answer": "376",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-020",
+      "source": "arithmetic",
+      "prompt": "Multiply 5 by 19.",
+      "answer": "95",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-021",
+      "source": "arithmetic",
+      "prompt": "Multiply 50 by 13.",
+      "answer": "650",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-022",
+      "source": "arithmetic",
+      "prompt": "Multiply 51 by 33.",
+      "answer": "1683",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-023",
+      "source": "arithmetic",
+      "prompt": "Multiply 55 by 14.",
+      "answer": "770",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-024",
+      "source": "arithmetic",
+      "prompt": "Multiply 56 by 24.",
+      "answer": "1344",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-025",
+      "source": "arithmetic",
+      "prompt": "Multiply 57 by 23.",
+      "answer": "1311",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-026",
+      "source": "arithmetic",
+      "prompt": "Multiply 6 by 9.",
+      "answer": "54",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-027",
+      "source": "arithmetic",
+      "prompt": "Multiply 65 by 13.",
+      "answer": "845",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-028",
+      "source": "arithmetic",
+      "prompt": "Multiply 72 by 37.",
+      "answer": "2664",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-029",
+      "source": "arithmetic",
+      "prompt": "Multiply 75 by 22.",
+      "answer": "1650",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-030",
+      "source": "arithmetic",
+      "prompt": "Multiply 78 by 22.",
+      "answer": "1716",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-031",
+      "source": "arithmetic",
+      "prompt": "Subtract 1 from 2.",
+      "answer": "1",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-032",
+      "source": "arithmetic",
+      "prompt": "Subtract 1 from 60.",
+      "answer": "59",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-033",
+      "source": "arithmetic",
+      "prompt": "Subtract 11 from 4.",
+      "answer": "-7",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-034",
+      "source": "arithmetic",
+      "prompt": "Subtract 12 from 30.",
+      "answer": "18",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-035",
+      "source": "arithmetic",
+      "prompt": "Subtract 13 from 65.",
+      "answer": "52",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-036",
+      "source": "arithmetic",
+      "prompt": "Subtract 14 from 28.",
+      "answer": "14",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-037",
+      "source": "arithmetic",
+      "prompt": "Subtract 15 from 46.",
+      "answer": "31",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-038",
+      "source": "arithmetic",
+      "prompt": "Subtract 16 from 2.",
+      "answer": "-14",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-039",
+      "source": "arithmetic",
+      "prompt": "Subtract 17 from 61.",
+      "answer": "44",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-040",
+      "source": "arithmetic",
+      "prompt": "Subtract 17 from 74.",
+      "answer": "57",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-041",
+      "source": "arithmetic",
+      "prompt": "Subtract 17 from 8.",
+      "answer": "-9",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-042",
+      "source": "arithmetic",
+      "prompt": "Subtract 18 from 52.",
+      "answer": "34",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-043",
+      "source": "arithmetic",
+      "prompt": "Subtract 18 from 67.",
+      "answer": "49",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-044",
+      "source": "arithmetic",
+      "prompt": "Subtract 2 from 68.",
+      "answer": "66",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-045",
+      "source": "arithmetic",
+      "prompt": "Subtract 2 from 72.",
+      "answer": "70",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-046",
+      "source": "arithmetic",
+      "prompt": "Subtract 20 from 63.",
+      "answer": "43",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-047",
+      "source": "arithmetic",
+      "prompt": "Subtract 21 from 32.",
+      "answer": "11",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-048",
+      "source": "arithmetic",
+      "prompt": "Subtract 21 from 52.",
+      "answer": "31",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-049",
+      "source": "arithmetic",
+      "prompt": "Subtract 22 from 13.",
+      "answer": "-9",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-050",
+      "source": "arithmetic",
+      "prompt": "Subtract 22 from 2.",
+      "answer": "-20",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-051",
+      "source": "arithmetic",
+      "prompt": "Subtract 22 from 30.",
+      "answer": "8",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-052",
+      "source": "arithmetic",
+      "prompt": "Subtract 22 from 42.",
+      "answer": "20",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-053",
+      "source": "arithmetic",
+      "prompt": "Subtract 22 from 59.",
+      "answer": "37",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-054",
+      "source": "arithmetic",
+      "prompt": "Subtract 26 from 58.",
+      "answer": "32",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-055",
+      "source": "arithmetic",
+      "prompt": "Subtract 30 from 8.",
+      "answer": "-22",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-056",
+      "source": "arithmetic",
+      "prompt": "Subtract 31 from 48.",
+      "answer": "17",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-057",
+      "source": "arithmetic",
+      "prompt": "Subtract 31 from 57.",
+      "answer": "26",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-058",
+      "source": "arithmetic",
+      "prompt": "Subtract 35 from 4.",
+      "answer": "-31",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-059",
+      "source": "arithmetic",
+      "prompt": "Subtract 35 from 53.",
+      "answer": "18",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-060",
+      "source": "arithmetic",
+      "prompt": "Subtract 37 from 12.",
+      "answer": "-25",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-061",
+      "source": "arithmetic",
+      "prompt": "Subtract 37 from 36.",
+      "answer": "-1",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-062",
+      "source": "arithmetic",
+      "prompt": "Subtract 37 from 44.",
+      "answer": "7",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-063",
+      "source": "arithmetic",
+      "prompt": "Subtract 37 from 73.",
+      "answer": "36",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-064",
+      "source": "arithmetic",
+      "prompt": "Subtract 39 from 15.",
+      "answer": "-24",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-065",
+      "source": "arithmetic",
+      "prompt": "Subtract 39 from 33.",
+      "answer": "-6",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-066",
+      "source": "arithmetic",
+      "prompt": "Subtract 39 from 39.",
+      "answer": "0",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-067",
+      "source": "arithmetic",
+      "prompt": "Subtract 4 from 19.",
+      "answer": "15",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-068",
+      "source": "arithmetic",
+      "prompt": "Subtract 4 from 50.",
+      "answer": "46",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-069",
+      "source": "arithmetic",
+      "prompt": "Subtract 40 from 33.",
+      "answer": "-7",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-070",
+      "source": "arithmetic",
+      "prompt": "Subtract 40 from 74.",
+      "answer": "34",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-071",
+      "source": "arithmetic",
+      "prompt": "Subtract 5 from 56.",
+      "answer": "51",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-072",
+      "source": "arithmetic",
+      "prompt": "Subtract 6 from 57.",
+      "answer": "51",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-073",
+      "source": "arithmetic",
+      "prompt": "Subtract 7 from 69.",
+      "answer": "62",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-074",
+      "source": "arithmetic",
+      "prompt": "Subtract 8 from 51.",
+      "answer": "43",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-075",
+      "source": "arithmetic",
+      "prompt": "Subtract 9 from 23.",
+      "answer": "14",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-076",
+      "source": "arithmetic",
+      "prompt": "What is 1 minus 37?",
+      "answer": "-36",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-077",
+      "source": "arithmetic",
+      "prompt": "What is 1 minus 38?",
+      "answer": "-37",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-078",
+      "source": "arithmetic",
+      "prompt": "What is 1 times 10?",
+      "answer": "10",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-079",
+      "source": "arithmetic",
+      "prompt": "What is 12 minus 33?",
+      "answer": "-21",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-080",
+      "source": "arithmetic",
+      "prompt": "What is 12 plus 35?",
+      "answer": "47",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-081",
+      "source": "arithmetic",
+      "prompt": "What is 12 times 27?",
+      "answer": "324",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-082",
+      "source": "arithmetic",
+      "prompt": "What is 14 minus 19?",
+      "answer": "-5",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-083",
+      "source": "arithmetic",
+      "prompt": "What is 14 plus 2?",
+      "answer": "16",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-084",
+      "source": "arithmetic",
+      "prompt": "What is 14 plus 40?",
+      "answer": "54",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-085",
+      "source": "arithmetic",
+      "prompt": "What is 15 minus 28?",
+      "answer": "-13",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-086",
+      "source": "arithmetic",
+      "prompt": "What is 16 minus 17?",
+      "answer": "-1",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-087",
+      "source": "arithmetic",
+      "prompt": "What is 16 minus 5?",
+      "answer": "11",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-088",
+      "source": "arithmetic",
+      "prompt": "What is 16 minus 6?",
+      "answer": "10",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-089",
+      "source": "arithmetic",
+      "prompt": "What is 17 plus 5?",
+      "answer": "22",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-090",
+      "source": "arithmetic",
+      "prompt": "What is 19 times 28?",
+      "answer": "532",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-091",
+      "source": "arithmetic",
+      "prompt": "What is 2 minus 1?",
+      "answer": "1",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-092",
+      "source": "arithmetic",
+      "prompt": "What is 2 minus 21?",
+      "answer": "-19",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-093",
+      "source": "arithmetic",
+      "prompt": "What is 2 times 19?",
+      "answer": "38",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-094",
+      "source": "arithmetic",
+      "prompt": "What is 20 plus 20?",
+      "answer": "40",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-095",
+      "source": "arithmetic",
+      "prompt": "What is 20 times 2?",
+      "answer": "40",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-096",
+      "source": "arithmetic",
+      "prompt": "What is 20 times 5?",
+      "answer": "100",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-097",
+      "source": "arithmetic",
+      "prompt": "What is 24 minus 2?",
+      "answer": "22",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-098",
+      "source": "arithmetic",
+      "prompt": "What is 24 plus 27?",
+      "answer": "51",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-099",
+      "source": "arithmetic",
+      "prompt": "What is 24 plus 8?",
+      "answer": "32",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-100",
+      "source": "arithmetic",
+      "prompt": "What is 24 times 30?",
+      "answer": "720",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-101",
+      "source": "arithmetic",
+      "prompt": "What is 25 minus 39?",
+      "answer": "-14",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-102",
+      "source": "arithmetic",
+      "prompt": "What is 25 plus 39?",
+      "answer": "64",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-103",
+      "source": "arithmetic",
+      "prompt": "What is 26 minus 24?",
+      "answer": "2",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-104",
+      "source": "arithmetic",
+      "prompt": "What is 26 times 12?",
+      "answer": "312",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-105",
+      "source": "arithmetic",
+      "prompt": "What is 27 plus 19?",
+      "answer": "46",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-106",
+      "source": "arithmetic",
+      "prompt": "What is 28 plus 20?",
+      "answer": "48",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-107",
+      "source": "arithmetic",
+      "prompt": "What is 29 minus 9?",
+      "answer": "20",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-108",
+      "source": "arithmetic",
+      "prompt": "What is 29 plus 11?",
+      "answer": "40",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-109",
+      "source": "arithmetic",
+      "prompt": "What is 29 plus 13?",
+      "answer": "42",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-110",
+      "source": "arithmetic",
+      "prompt": "What is 3 minus 4?",
+      "answer": "-1",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-111",
+      "source": "arithmetic",
+      "prompt": "What is 3 plus 28?",
+      "answer": "31",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-112",
+      "source": "arithmetic",
+      "prompt": "What is 3 times 29?",
+      "answer": "87",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-113",
+      "source": "arithmetic",
+      "prompt": "What is 3 times 32?",
+      "answer": "96",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-114",
+      "source": "arithmetic",
+      "prompt": "What is 30 minus 4?",
+      "answer": "26",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-115",
+      "source": "arithmetic",
+      "prompt": "What is 30 plus 3?",
+      "answer": "33",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-116",
+      "source": "arithmetic",
+      "prompt": "What is 30 times 33?",
+      "answer": "990",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-117",
+      "source": "arithmetic",
+      "prompt": "What is 31 minus 3?",
+      "answer": "28",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-118",
+      "source": "arithmetic",
+      "prompt": "What is 31 plus 23?",
+      "answer": "54",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-119",
+      "source": "arithmetic",
+      "prompt": "What is 31 plus 40?",
+      "answer": "71",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-120",
+      "source": "arithmetic",
+      "prompt": "What is 32 minus 32?",
+      "answer": "0",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-121",
+      "source": "arithmetic",
+      "prompt": "What is 32 plus 23?",
+      "answer": "55",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-122",
+      "source": "arithmetic",
+      "prompt": "What is 32 plus 8?",
+      "answer": "40",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-123",
+      "source": "arithmetic",
+      "prompt": "What is 35 times 18?",
+      "answer": "630",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-124",
+      "source": "arithmetic",
+      "prompt": "What is 36 minus 2?",
+      "answer": "34",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-125",
+      "source": "arithmetic",
+      "prompt": "What is 36 minus 36?",
+      "answer": "0",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-126",
+      "source": "arithmetic",
+      "prompt": "What is 36 plus 25?",
+      "answer": "61",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-127",
+      "source": "arithmetic",
+      "prompt": "What is 36 times 10?",
+      "answer": "360",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-128",
+      "source": "arithmetic",
+      "prompt": "What is 36 times 22?",
+      "answer": "792",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-129",
+      "source": "arithmetic",
+      "prompt": "What is 37 times 17?",
+      "answer": "629",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-130",
+      "source": "arithmetic",
+      "prompt": "What is 38 times 11?",
+      "answer": "418",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-131",
+      "source": "arithmetic",
+      "prompt": "What is 39 minus 8?",
+      "answer": "31",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-132",
+      "source": "arithmetic",
+      "prompt": "What is 39 plus 11?",
+      "answer": "50",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-133",
+      "source": "arithmetic",
+      "prompt": "What is 4 times 29?",
+      "answer": "116",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-134",
+      "source": "arithmetic",
+      "prompt": "What is 40 plus 9?",
+      "answer": "49",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-135",
+      "source": "arithmetic",
+      "prompt": "What is 41 minus 4?",
+      "answer": "37",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-136",
+      "source": "arithmetic",
+      "prompt": "What is 41 times 23?",
+      "answer": "943",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-137",
+      "source": "arithmetic",
+      "prompt": "What is 42 plus 4?",
+      "answer": "46",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-138",
+      "source": "arithmetic",
+      "prompt": "What is 44 times 16?",
+      "answer": "704",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-139",
+      "source": "arithmetic",
+      "prompt": "What is 44 times 27?",
+      "answer": "1188",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-140",
+      "source": "arithmetic",
+      "prompt": "What is 46 plus 35?",
+      "answer": "81",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-141",
+      "source": "arithmetic",
+      "prompt": "What is 47 minus 25?",
+      "answer": "22",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-142",
+      "source": "arithmetic",
+      "prompt": "What is 48 minus 26?",
+      "answer": "22",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-143",
+      "source": "arithmetic",
+      "prompt": "What is 49 plus 14?",
+      "answer": "63",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-144",
+      "source": "arithmetic",
+      "prompt": "What is 5 plus 32?",
+      "answer": "37",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-145",
+      "source": "arithmetic",
+      "prompt": "What is 50 plus 3?",
+      "answer": "53",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-146",
+      "source": "arithmetic",
+      "prompt": "What is 51 minus 36?",
+      "answer": "15",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-147",
+      "source": "arithmetic",
+      "prompt": "What is 51 plus 15?",
+      "answer": "66",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-148",
+      "source": "arithmetic",
+      "prompt": "What is 51 plus 19?",
+      "answer": "70",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-149",
+      "source": "arithmetic",
+      "prompt": "What is 53 minus 5?",
+      "answer": "48",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-150",
+      "source": "arithmetic",
+      "prompt": "What is 55 plus 10?",
+      "answer": "65",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-151",
+      "source": "arithmetic",
+      "prompt": "What is 55 plus 8?",
+      "answer": "63",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-152",
+      "source": "arithmetic",
+      "prompt": "What is 55 times 14?",
+      "answer": "770",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-153",
+      "source": "arithmetic",
+      "prompt": "What is 57 minus 33?",
+      "answer": "24",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-154",
+      "source": "arithmetic",
+      "prompt": "What is 57 minus 36?",
+      "answer": "21",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-155",
+      "source": "arithmetic",
+      "prompt": "What is 58 minus 25?",
+      "answer": "33",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-156",
+      "source": "arithmetic",
+      "prompt": "What is 58 plus 28?",
+      "answer": "86",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-157",
+      "source": "arithmetic",
+      "prompt": "What is 58 times 33?",
+      "answer": "1914",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-158",
+      "source": "arithmetic",
+      "prompt": "What is 59 plus 12?",
+      "answer": "71",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-159",
+      "source": "arithmetic",
+      "prompt": "What is 59 times 30?",
+      "answer": "1770",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-160",
+      "source": "arithmetic",
+      "prompt": "What is 6 minus 36?",
+      "answer": "-30",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-161",
+      "source": "arithmetic",
+      "prompt": "What is 6 times 14?",
+      "answer": "84",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-162",
+      "source": "arithmetic",
+      "prompt": "What is 6 times 30?",
+      "answer": "180",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-163",
+      "source": "arithmetic",
+      "prompt": "What is 60 minus 28?",
+      "answer": "32",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-164",
+      "source": "arithmetic",
+      "prompt": "What is 60 plus 29?",
+      "answer": "89",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-165",
+      "source": "arithmetic",
+      "prompt": "What is 61 minus 27?",
+      "answer": "34",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-166",
+      "source": "arithmetic",
+      "prompt": "What is 61 minus 4?",
+      "answer": "57",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-167",
+      "source": "arithmetic",
+      "prompt": "What is 61 plus 7?",
+      "answer": "68",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-168",
+      "source": "arithmetic",
+      "prompt": "What is 61 times 11?",
+      "answer": "671",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-169",
+      "source": "arithmetic",
+      "prompt": "What is 62 minus 16?",
+      "answer": "46",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-170",
+      "source": "arithmetic",
+      "prompt": "What is 63 times 40?",
+      "answer": "2520",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-171",
+      "source": "arithmetic",
+      "prompt": "What is 65 plus 23?",
+      "answer": "88",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-172",
+      "source": "arithmetic",
+      "prompt": "What is 65 plus 36?",
+      "answer": "101",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-173",
+      "source": "arithmetic",
+      "prompt": "What is 66 minus 25?",
+      "answer": "41",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-174",
+      "source": "arithmetic",
+      "prompt": "What is 69 minus 13?",
+      "answer": "56",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-175",
+      "source": "arithmetic",
+      "prompt": "What is 69 times 17?",
+      "answer": "1173",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-176",
+      "source": "arithmetic",
+      "prompt": "What is 69 times 23?",
+      "answer": "1587",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-177",
+      "source": "arithmetic",
+      "prompt": "What is 7 times 16?",
+      "answer": "112",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-178",
+      "source": "arithmetic",
+      "prompt": "What is 70 minus 1?",
+      "answer": "69",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-179",
+      "source": "arithmetic",
+      "prompt": "What is 72 plus 17?",
+      "answer": "89",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-180",
+      "source": "arithmetic",
+      "prompt": "What is 72 plus 24?",
+      "answer": "96",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-181",
+      "source": "arithmetic",
+      "prompt": "What is 73 times 32?",
+      "answer": "2336",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-182",
+      "source": "arithmetic",
+      "prompt": "What is 74 plus 32?",
+      "answer": "106",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-183",
+      "source": "arithmetic",
+      "prompt": "What is 74 plus 40?",
+      "answer": "114",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-184",
+      "source": "arithmetic",
+      "prompt": "What is 74 times 40?",
+      "answer": "2960",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-185",
+      "source": "arithmetic",
+      "prompt": "What is 75 minus 20?",
+      "answer": "55",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-186",
+      "source": "arithmetic",
+      "prompt": "What is 75 plus 21?",
+      "answer": "96",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-187",
+      "source": "arithmetic",
+      "prompt": "What is 75 plus 37?",
+      "answer": "112",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-188",
+      "source": "arithmetic",
+      "prompt": "What is 76 minus 2?",
+      "answer": "74",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-189",
+      "source": "arithmetic",
+      "prompt": "What is 76 minus 39?",
+      "answer": "37",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-190",
+      "source": "arithmetic",
+      "prompt": "What is 77 plus 2?",
+      "answer": "79",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-191",
+      "source": "arithmetic",
+      "prompt": "What is 78 plus 17?",
+      "answer": "95",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-192",
+      "source": "arithmetic",
+      "prompt": "What is 78 plus 30?",
+      "answer": "108",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-193",
+      "source": "arithmetic",
+      "prompt": "What is 78 times 1?",
+      "answer": "78",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-194",
+      "source": "arithmetic",
+      "prompt": "What is 79 plus 7?",
+      "answer": "86",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-195",
+      "source": "arithmetic",
+      "prompt": "What is 8 plus 18?",
+      "answer": "26",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-196",
+      "source": "arithmetic",
+      "prompt": "What is 8 plus 23?",
+      "answer": "31",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-197",
+      "source": "arithmetic",
+      "prompt": "What is 8 plus 3?",
+      "answer": "11",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-198",
+      "source": "arithmetic",
+      "prompt": "What is 80 minus 2?",
+      "answer": "78",
+      "task": "exact-number"
+    },
+    {
+      "id": "arith-199",
+      "source": "arithmetic",
+      "prompt": "What is 80 plus 30?",
+      "answer": "110",
+      "task": "exact-number"
+    }
+  ]
+}

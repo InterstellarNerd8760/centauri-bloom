@@ -7,7 +7,13 @@ import time
 from pathlib import Path
 
 from bloom.notebook_workflow import parent_total, pick_device, save_corpus, restore_corpus, sha256
-from bloom.trainer_data import RECIPES, INSTRUCT_MIX, prepare
+from bloom.trainer_data import RECIPES, INSTRUCT_MIX, encode_pairs, needs_jaron, prepare, stream_instruct_source
+from bloom.rft import (
+    MAX_NEW_TOKENS, RFT_LR, RFT_TEMPERATURE,
+    REPLAY_FRACTION, SAMPLES_PER_PROMPT, STAGES, chat_parent_revisions, evaluate_locked,
+    generate_completions, is_chat_parent, load_locked_eval, build_rft_prompts,
+    score_prompt_completions, yield_report,
+)
 
 REPO_ID = "Centauri-Bloom/Bloom-Text-0.1"
 TEXT_REPOS = {"14M": REPO_ID, "50M": "Centauri-Bloom/Bloom-Text-0.2"}
@@ -16,8 +22,13 @@ TARGET_REPOS = TEXT_REPOS
 CONFIG_50M = "configs/bloom-0.2-50m.json"
 PARAM_COUNT_50M = 54_807_040
 
-def target_repo(model_size, recipe):
-    """Pretraining stays on Bloom-Text-*; 50M instruction and the open instruct mix use Bloom-Chat-*."""
+def target_repo(model_size, recipe, stage="sft"):
+    """Pretraining stays on Bloom-Text-*; 50M instruction, the open instruct mix, and RFT use Bloom-Chat-*."""
+    stage = stage or "sft"
+    if stage in ("rft", "rft-baseline"):
+        if model_size != "50M":
+            raise ValueError("Rejection sampling is implemented for Bloom-Chat-0.2 (50M) only.")
+        return CHAT_REPOS["50M"]
     if model_size not in TEXT_REPOS or recipe not in RECIPES:
         raise ValueError("Choose 14M or 50M and a known dataset.")
     track, _ = RECIPES[recipe]
@@ -238,13 +249,30 @@ def load_hub_parent(api, repo, token=None, revision=None):
 
 def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover=False,
                  model_size="14M", device=None, parent_run_dir=None,
-                 parent_hf_repo=None, parent_hf_revision=None):
+                 parent_hf_repo=None, parent_hf_revision=None, stage="sft",
+                 rft_mode="pilot", rft_train=False, rft_samples=None,
+                 rft_max_new=None, rft_temperature=None, gsm8k_rows=None):
     import torch
     from torch.utils.data import DataLoader
     from huggingface_hub import snapshot_download
     from tokenizers import Tokenizer
     from bloom.model import Bloom,Config
     from bloom.checkpoint import config_hash,load_weights,save_weights
+    stage = stage or "sft"
+    if stage not in STAGES:
+        raise ValueError("STAGE must be sft, rft, or rft-baseline.")
+    if stage in ("rft", "rft-baseline"):
+        if stage == "rft" and not rft_train:
+            if type(steps) is not int or not 0 <= steps <= 10000:
+                raise ValueError("Choose a step budget between 0 and 10,000 for a yield-only RFT pilot.")
+        elif type(steps) is not int or not 1 <= steps <= 10000:
+            raise ValueError("Choose 14M or 50M, a known dataset, and 1–10,000 steps.")
+        return run_rft_training(
+            api, recipe, steps, repo_dir, out_dir, jaron_path=jaron_path, recover=recover,
+            model_size=model_size, device=device, parent_run_dir=parent_run_dir,
+            parent_hf_repo=parent_hf_repo, parent_hf_revision=parent_hf_revision,
+            stage=stage, rft_mode=rft_mode, rft_train=rft_train, rft_samples=rft_samples,
+            rft_max_new=rft_max_new, rft_temperature=rft_temperature, gsm8k_rows=gsm8k_rows)
     if model_size not in TEXT_REPOS or recipe not in RECIPES or type(steps) is not int or not 1<=steps<=10000:
         raise ValueError("Choose 14M or 50M, a known dataset, and 1–10,000 steps.")
     if parent_run_dir and (parent_hf_repo or parent_hf_revision):
@@ -474,4 +502,342 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
     (out/"partial.json").unlink()
     print(json.dumps(report,indent=2),flush=True)
     print("COMPLETED:",out,"| step",metrics["step"],"| input tokens",metrics["train_tokens"],flush=True)
+    return metrics
+
+
+def load_chat_parent(api, model_size, repo_dir, parent_run_dir=None, parent_hf_repo=None,
+                     parent_hf_revision=None, token=None):
+    """Load Bloom-Chat-0.2. Prefer refs/pr/1, then main. Never writes to the parent."""
+    expected = CHAT_REPOS[model_size]
+    if parent_run_dir and (parent_hf_repo or parent_hf_revision):
+        raise ValueError("Set PARENT_RUN_DIR or PARENT_HF_REPO/PARENT_HF_REVISION, not both.")
+    if parent_run_dir:
+        parent, cfg, pm, weights, revision = load_local_parent(parent_run_dir, model_size, repo_dir)
+        if not is_chat_parent(pm, model_size):
+            raise ValueError(
+                "RFT must start from Bloom-Chat-0.2, not a text or pretrain checkpoint. "
+                "The original Chat-0.2 weights are left untouched.")
+        return parent, cfg, pm, weights, revision, "local"
+    repo = parent_hf_repo or expected
+    if repo != expected:
+        raise ValueError(
+            "RFT starts from %s, not %s. Set PARENT_HF_REPO to %s and PARENT_HF_REVISION "
+            "to refs/pr/1 (falls back to main if that PR is already merged)."
+            % (expected, repo, expected))
+    last_err = None
+    for rev in chat_parent_revisions(parent_hf_revision):
+        try:
+            parent, cfg, pm, weights, resolved = load_hub_parent(api, repo, token=token, revision=rev)
+            print("Loaded chat parent:", repo, "| requested:", rev, "| resolved:", resolved, flush=True)
+            return parent, cfg, pm, weights, resolved, rev
+        except Exception as exc:
+            last_err = exc
+            print("Chat parent not available at", repo, rev, ":", exc, flush=True)
+    raise RuntimeError(
+        "Could not load %s at %s. Last error: %s"
+        % (repo, ", ".join(chat_parent_revisions(parent_hf_revision)), last_err))
+
+
+def _load_gsm8k_rows(tok, context, eot, gsm8k_rows=None):
+    if gsm8k_rows is not None:
+        return list(gsm8k_rows), {"name": "GSM8K", "note": "provided rows"}
+    rows, meta = stream_instruct_source("GSM8K", tok, context, eot)
+    return rows, meta
+
+
+def run_rft_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover=False,
+                     model_size="50M", device=None, parent_run_dir=None, parent_hf_repo=None,
+                     parent_hf_revision=None, stage="rft", rft_mode="pilot", rft_train=False,
+                     rft_samples=None, rft_max_new=None, rft_temperature=None, gsm8k_rows=None):
+    """Rejection-sampling pilot/full run or an SFT baseline on the locked eval.
+
+    New weights, if any, are written only to out_dir and later a Hugging Face PR.
+    The Chat-0.2 parent directory and its hub files are never overwritten.
+    """
+    import torch
+    from torch.utils.data import DataLoader
+    from tokenizers import Tokenizer
+    from bloom.model import Bloom
+    from bloom.checkpoint import config_hash, load_weights, save_weights
+
+    if model_size != "50M":
+        raise ValueError("Rejection sampling is implemented for Bloom-Chat-0.2 (50M) only.")
+    if recipe not in RECIPES:
+        raise ValueError("Choose a known dataset.")
+    if rft_mode not in ("pilot", "full"):
+        raise ValueError("RFT_MODE must be pilot or full.")
+    if RECIPES[recipe][0] != "instruction-tuning" and stage == "rft-baseline":
+        raise ValueError("The SFT baseline uses an instruction dataset, such as the Instruct mix.")
+    device = device or pick_device()
+    if device not in ("cuda", "mps", "cpu"):
+        raise ValueError("Unsupported device.")
+    samples_n = SAMPLES_PER_PROMPT if rft_samples is None else int(rft_samples)
+    max_new = MAX_NEW_TOKENS if rft_max_new is None else int(rft_max_new)
+    temperature = RFT_TEMPERATURE if rft_temperature is None else float(rft_temperature)
+    if samples_n < 1 or max_new < 1:
+        raise ValueError("RFT sample count and max new tokens must be positive.")
+
+    token = getattr(api, "token", None)
+    parent, cfg, pm, weight_path, revision, requested_rev = load_chat_parent(
+        api, model_size, repo_dir, parent_run_dir=parent_run_dir, parent_hf_repo=parent_hf_repo,
+        parent_hf_revision=parent_hf_revision, token=token)
+    # Resolve the chat repo's current main (PR base) without writing to it.
+    target_repo_id = CHAT_REPOS[model_size]
+    try:
+        target_revision = api.model_info(target_repo_id).sha
+    except Exception:
+        target_revision = None
+
+    tok = Tokenizer.from_file(str(parent / "tokenizer.json"))
+    eot = tok.token_to_id("<|endoftext|>")
+    if eot is None or tok.get_vocab_size() != cfg.vocab_size:
+        raise ValueError("Parent tokenizer/config verification failed.")
+    seed = 47 + int(pm.get("step") or 0)
+    torch.manual_seed(seed)
+    model = Bloom(cfg)
+    model.load_state_dict(load_weights(weight_path, pm["weights_sha256"], model.state_dict()), strict=True)
+    model.to(device)
+    params = sum(p.numel() for p in model.parameters())
+    if params != PARAM_COUNT_50M:
+        raise RuntimeError(f"50M config produced {params} parameters, expected {PARAM_COUNT_50M}.")
+    print("Model: 50M | stage:", stage, "| mode:", rft_mode, "| train:", rft_train,
+          "| parent:", revision, "| requested:", requested_rev, "| device:", device, flush=True)
+
+    out = Path(out_dir)
+    if out.resolve() == Path(parent).resolve():
+        raise RuntimeError("Refusing to write RFT outputs into the Chat-0.2 parent folder.")
+    completed = (out / "metrics.json").exists()
+    if completed:
+        if recover:
+            from bloom.notebook_workflow import repair_completed_metrics
+            metrics = repair_completed_metrics(out, steps=steps if rft_train or stage == "rft-baseline" else 0)
+            if metrics.get("stage") != stage or metrics.get("rft_mode") != rft_mode:
+                raise RuntimeError("Completed run stage differs from the current notebook settings.")
+            print("Completed run found; skipping training:", out, flush=True)
+            return metrics
+        raise RuntimeError("This run already completed. Use upload recovery if you need to submit the PR.")
+    out.mkdir(parents=True, exist_ok=True)
+
+    lr = RFT_LR
+    batch_size, grad_accum = 8, 4
+    settings = {
+        "recipe": recipe, "steps": steps, "model_size": model_size, "stage": stage,
+        "rft_mode": rft_mode, "rft_train": bool(rft_train), "rft_samples": samples_n,
+        "rft_max_new": max_new, "rft_temperature": temperature,
+        "parent_revision": revision, "target_repo": target_repo_id,
+        "target_revision": target_revision, "parent_run_dir": str(parent_run_dir or ""),
+        "parent_hf_repo": parent_hf_repo or "", "parent_hf_revision": parent_hf_revision or "",
+        "requested_parent_revision": requested_rev, "seed": seed, "batch_size": batch_size,
+        "grad_accum": grad_accum, "learning_rate": lr,
+        "tokenizer_sha256": sha256(parent / "tokenizer.json"),
+    }
+    settings_path = out / "run-settings.json"
+    if recover:
+        if not settings_path.is_file() or json.loads(settings_path.read_text()) != settings:
+            raise RuntimeError("Recovery settings/parent differ from saved run.")
+    elif settings_path.exists():
+        raise RuntimeError("Run directory already initialized. Use recovery or a new folder.")
+    else:
+        settings_path.write_text(json.dumps(settings, indent=2))
+
+    shutil.copyfile(parent / "tokenizer.json", out / "tokenizer.json")
+    (out / "config.json").write_text(json.dumps(cfg.__dict__, indent=2, sort_keys=True))
+
+    eval_set = load_locked_eval(repo_dir=repo_dir)
+    print("Locked eval:", eval_set["sha256"], "| items:", len(eval_set["items"]), flush=True)
+    parent_eval_path = out / "locked-eval-parent.json"
+    if recover and parent_eval_path.is_file():
+        parent_eval = json.loads(parent_eval_path.read_text())
+        print("Loaded saved parent locked-eval.", flush=True)
+    else:
+        parent_eval = evaluate_locked(model, tok, cfg.context, eot, device, eval_set=eval_set,
+                                     repo_dir=repo_dir, max_new=max_new)
+        parent_eval_path.write_text(json.dumps(parent_eval, indent=2, allow_nan=False))
+        print("Parent locked eval:", json.dumps(parent_eval["summary"], indent=2), flush=True)
+
+    yield_stats = None
+    kept_pairs = []
+    gsm_meta = None
+    if stage == "rft":
+        gsm_rows, gsm_meta = _load_gsm8k_rows(tok, cfg.context, eot, gsm8k_rows=gsm8k_rows)
+        prompts = build_rft_prompts(rft_mode, gsm8k_rows=gsm_rows, eval_set=eval_set, seed=seed, repo_dir=repo_dir)
+        (out / "rft-prompts.json").write_text(json.dumps(prompts, indent=2))
+        gen_path = out / "rft-generations.json"
+        records = []
+        start = 0
+        if recover and gen_path.is_file():
+            records = json.loads(gen_path.read_text())
+            start = len(records)
+            print("Resuming generation at prompt", start, "of", len(prompts), flush=True)
+        for i in range(start, len(prompts)):
+            comps = generate_completions(
+                model, tok, [prompts[i]["prompt"]], cfg.context, eot, device,
+                n=samples_n, max_new=max_new, temperature=temperature, seed=seed + i)[0]
+            records.append(score_prompt_completions(prompts[i], comps, max_new=max_new))
+            if (i + 1) % 10 == 0 or i + 1 == len(prompts):
+                gen_path.write_text(json.dumps(records))
+                print("Generated", i + 1, "of", len(prompts), "| kept",
+                      sum(1 for r in records if r.get("kept")), flush=True)
+        gen_path.write_text(json.dumps(records))
+        # Strip bulky completion lists in the summary file, keep one example each.
+        yield_stats = yield_report(records)
+        (out / "rft-yield.json").write_text(json.dumps({
+            "yield": yield_stats,
+            "n_prompts": len(prompts),
+            "samples_per_prompt": samples_n,
+            "max_new_tokens": max_new,
+            "temperature": temperature,
+            "gsm8k": gsm_meta,
+            "by_source_examples": {
+                source: next(({"prompt": r["prompt"], "kept": r.get("kept"), "answer": r.get("answer")}
+                              for r in records if r.get("source") == source and r.get("kept")), None)
+                for source in sorted({r.get("source") for r in records})
+            },
+        }, indent=2))
+        print("RFT yield:", json.dumps(yield_stats, indent=2), flush=True)
+        kept_pairs = [(r["prompt"], r["kept"]) for r in records if r.get("kept")]
+
+    report = {"parent_locked_eval": parent_eval["summary"], "rft_yield": yield_stats,
+              "stage": stage, "rft_mode": rft_mode}
+    (out / "evaluation.json").write_text(json.dumps(report, indent=2, allow_nan=False))
+
+    train_after = (stage == "rft-baseline") or (stage == "rft" and rft_train)
+    if not train_after:
+        metrics = {
+            "additional_steps": 0, "candidate_uploadable": False, "rft_train": False,
+            "stage": stage, "rft_mode": rft_mode, "run_name": out.name, "step": int(pm.get("step") or 0),
+            "parent_revision": revision, "parent_weights_sha256": pm["weights_sha256"],
+            "parent_reported_train_tokens": pm.get("train_tokens"), "parameters": params,
+            "config_sha256": config_hash(cfg), "training_track": "rejection-sampling-pilot",
+            "dataset": recipe, "device": device, "model_size": model_size,
+            "target_repo": target_repo_id, "target_revision": target_revision,
+            "locked_eval_sha256": eval_set["sha256"],
+            "parent_locked_eval": parent_eval["summary"], "rft_yield": yield_stats,
+            "seed": seed, "learning_rate": lr, "batch_size": batch_size, "grad_accum": grad_accum,
+            "prompt_format": "User: {prompt}\\nAssistant:",
+            "evaluation_sha256": sha256(out / "evaluation.json"),
+            "data_provenance_sha256": None,
+            "note": "Yield-only RFT pilot. No new candidate weights were written. Chat-0.2 was not modified.",
+        }
+        provenance = {"stage": stage, "rft_mode": rft_mode, "locked_eval_sha256": eval_set["sha256"],
+                      "rft_yield": yield_stats, "gsm8k": gsm_meta,
+                      "parent_revision": revision, "requested_parent_revision": requested_rev}
+        (out / "data-provenance.json").write_text(json.dumps(provenance, indent=2))
+        metrics["data_provenance_sha256"] = sha256(out / "data-provenance.json")
+        (out / "metrics.json").write_text(json.dumps(metrics, indent=2, sort_keys=True, allow_nan=False))
+        print("COMPLETED yield-only pilot:", out, "| kept",
+              None if not yield_stats else "%s/%s" % (yield_stats["kept"], yield_stats["total"]), flush=True)
+        return metrics
+
+    if stage == "rft":
+        if len(kept_pairs) < 32:
+            raise RuntimeError(
+                "RFT kept only %s responses, which is too few to train (need at least 32). "
+                "Inspect rft-yield.json and do not start a full run yet." % len(kept_pairs))
+        replay_pairs = []
+        if needs_jaron(recipe, stage=stage, rft_train=True):
+            if not jaron_path:
+                print("No Jaron file; training on kept RFT pairs only.", flush=True)
+            else:
+                t, v, sources, meta = prepare(recipe, repo_dir, tok, cfg.context, eot, seed, jaron_path)
+                # Recover original text pairs from the encoded set is hard; reload via prepare_instruct
+                # mix is already encoded. Replay by decoding is not available, so mix at the tensor
+                # level below after encoding kept pairs.
+                replay_ds = t
+        else:
+            replay_ds = None
+            meta = {"recipe": recipe}
+        train_ds = encode_pairs(kept_pairs, tok, cfg.context, eot)
+        if replay_ds is not None and REPLAY_FRACTION > 0:
+            import torch as _torch
+            from torch.utils.data import TensorDataset
+            n_keep = len(train_ds)
+            n_replay = min(len(replay_ds), max(1, int(round(n_keep * REPLAY_FRACTION / (1 - REPLAY_FRACTION)))))
+            idx = _torch.randperm(len(replay_ds), generator=_torch.Generator().manual_seed(seed))[:n_replay]
+            rx, ry = replay_ds.tensors[0][idx], replay_ds.tensors[1][idx]
+            train_ds = TensorDataset(_torch.cat([train_ds.tensors[0], rx], 0),
+                                     _torch.cat([train_ds.tensors[1], ry], 0))
+            meta = {"recipe": recipe, "kept": n_keep, "replay": int(n_replay),
+                    "replay_fraction_target": REPLAY_FRACTION, "sft": meta}
+        else:
+            meta = {"recipe": recipe, "kept": len(train_ds), "replay": 0}
+        val_pairs = [(item["prompt"], item["answer"]) for item in eval_set["items"]
+                     if item.get("task") == "exact-number" and item.get("answer")]
+        val_ds = encode_pairs(val_pairs, tok, cfg.context, eot)
+        provenance = {"stage": stage, "rft_mode": rft_mode, "locked_eval_sha256": eval_set["sha256"],
+                      "rft_yield": yield_stats, "train": meta, "parent_revision": revision,
+                      "requested_parent_revision": requested_rev, "loss": "assistant tokens only"}
+    else:
+        if needs_jaron(recipe, stage=stage) and not jaron_path:
+            raise ValueError("The SFT baseline requires the original Jaron JSON.")
+        train_ds, val_ds, sources, meta = prepare(recipe, repo_dir, tok, cfg.context, eot, seed, jaron_path)
+        provenance = {"stage": stage, "recipe": recipe, "locked_eval_sha256": eval_set["sha256"],
+                      "sft": meta, "parent_revision": revision, "requested_parent_revision": requested_rev,
+                      "note": "SFT baseline: original instruction data, same steps and learning rate as RFT."}
+
+    (out / "data-provenance.json").write_text(json.dumps(provenance, indent=2))
+    save_corpus(out / "processed-corpus.npz", train_ds, val_ds, revision)
+
+    collate = collate_instruction
+    train = DataLoader(train_ds, batch_size=batch_size, shuffle=True, drop_last=True, collate_fn=collate,
+                       generator=torch.Generator().manual_seed(seed))
+    val = DataLoader(val_ds, batch_size=batch_size, shuffle=False, collate_fn=collate)
+    if not len(train):
+        raise RuntimeError("Too few training examples for this RFT or baseline run.")
+    latest = {}
+
+    def checkpoint(step, inputs, targets, updates, loss, elapsed):
+        partial = out / "partial.safetensors"
+        tmp = out / "partial.tmp"
+        digest = save_weights(tmp, model.state_dict(), model.state_dict())
+        tmp.replace(partial)
+        latest.update({"additional_steps": step, "train_tokens": inputs, "supervised_target_tokens": targets,
+                       "optimizer_updates": updates, "last_train_loss": loss, "elapsed_seconds": elapsed,
+                       "weights_sha256": digest})
+        (out / "partial.json").write_text(json.dumps(latest, indent=2))
+        print("Saved step", step, "to", out, flush=True)
+
+    report_train = train_model(model, train, val, {}, device, steps, grad_accum, lr, seed, checkpoint,
+                               lambda: generate_samples(model, tok, cfg.context, eot, device),
+                               start_step=0, optimizer_file=str(out / "partial-optimizer.pt"))
+    candidate_eval = evaluate_locked(model, tok, cfg.context, eot, device, eval_set=eval_set,
+                                     repo_dir=repo_dir, max_new=max_new)
+    (out / "locked-eval-candidate.json").write_text(json.dumps(candidate_eval, indent=2, allow_nan=False))
+    report = {"parent_locked_eval": parent_eval["summary"], "candidate_locked_eval": candidate_eval["summary"],
+              "rft_yield": yield_stats, "stage": stage, "rft_mode": rft_mode,
+              "parent_val_loss": report_train["parent_val_loss"],
+              "candidate_val_loss": report_train["candidate_val_loss"],
+              "parent_samples": report_train.get("parent_samples"),
+              "candidate_samples": report_train.get("candidate_samples")}
+    (out / "evaluation.json").write_text(json.dumps(report, indent=2, allow_nan=False))
+    (out / "partial.safetensors").replace(out / ("step-%06d.safetensors" % steps))
+    metrics = {**latest, "candidate_uploadable": True, "rft_train": True, "stage": stage,
+               "rft_mode": rft_mode, "run_name": out.name, "step": int(pm.get("step") or 0) + steps,
+               "step_scope": "attempted optimizer steps; see optimizer_updates",
+               "parent_revision": revision, "parent_weights_sha256": pm["weights_sha256"],
+               "parent_reported_train_tokens": pm.get("train_tokens"), "parameters": params,
+               "config_sha256": config_hash(cfg),
+               "training_track": "rejection-sampling" if stage == "rft" else "sft-baseline",
+               "dataset": recipe, "device": device, "model_size": model_size,
+               "target_repo": target_repo_id, "target_revision": target_revision,
+               "validation_loss_scope": "response targets only",
+               "val_loss": report_train["candidate_val_loss"],
+               "parent_val_loss_same_windows": report_train["parent_val_loss"],
+               "locked_eval_sha256": eval_set["sha256"],
+               "parent_locked_eval": parent_eval["summary"],
+               "candidate_locked_eval": candidate_eval["summary"],
+               "rft_yield": yield_stats, "train_examples": len(train_ds),
+               "validation_examples": len(val_ds), "seed": seed, "learning_rate": lr,
+               "batch_size": batch_size, "grad_accum": grad_accum,
+               "prompt_format": "User: {prompt}\\nAssistant:",
+               "data_provenance_sha256": sha256(out / "data-provenance.json"),
+               "evaluation_sha256": sha256(out / "evaluation.json")}
+    if (out / "partial.json").is_file():
+        (out / "partial.json").unlink()
+    (out / "metrics.json").write_text(json.dumps(metrics, indent=2, sort_keys=True, allow_nan=False))
+    print(json.dumps({"parent_locked_eval": parent_eval["summary"],
+                      "candidate_locked_eval": candidate_eval["summary"],
+                      "rft_yield": yield_stats}, indent=2), flush=True)
+    print("COMPLETED:", out, "| stage", stage, "| step", metrics["step"], flush=True)
+    print("Chat-0.2 parent was not modified. Review the new Hugging Face PR before merging.", flush=True)
     return metrics
