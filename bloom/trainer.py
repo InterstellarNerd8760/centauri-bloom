@@ -205,30 +205,40 @@ def load_local_parent(path, model_size, repo_dir):
     revision = "local:"+path.name+":"+digest
     return path, cfg, pm, weights, revision
 
-def load_hub_parent(api, repo, token=None):
-    """Load merged weights from a Hugging Face model repo such as Bloom-Text-0.2."""
+def load_hub_parent(api, repo, token=None, revision=None):
+    """Load weights from a Hugging Face model repo, optionally a PR or other revision."""
     from huggingface_hub import snapshot_download
     from bloom.model import Config
     try:
-        revision = api.model_info(repo).sha
+        info = api.model_info(repo, revision=revision) if revision else api.model_info(repo)
+        resolved = info.sha
     except Exception as exc:
+        if revision:
+            raise RuntimeError(
+                "Could not load %s at revision %s. Check PARENT_HF_REPO and PARENT_HF_REVISION, or set PARENT_RUN_DIR."
+                % (repo, revision)
+            ) from exc
         raise RuntimeError(
-            "Could not load %s. Set PARENT_RUN_DIR to a completed 50M pretraining folder, or wait until that repo has merged weights." % repo
+            "Could not load %s. Set PARENT_HF_REVISION (for example refs/pr/1) or PARENT_RUN_DIR, or wait until that repo has merged weights."
+            % repo
         ) from exc
-    if not revision:
+    if not resolved:
         raise RuntimeError("Parent revision unavailable: "+repo)
-    parent = Path(snapshot_download(repo,revision=revision,token=token,
+    pin = revision or resolved
+    parent = Path(snapshot_download(repo,revision=pin,token=token,
                    allow_patterns=["config.json","tokenizer.json","metrics.json","model.safetensors"]))
     if not (parent/"model.safetensors").is_file() or not (parent/"metrics.json").is_file() or not (parent/"config.json").is_file():
         raise RuntimeError(
-            "%s does not yet have merged weights. Set PARENT_RUN_DIR to the completed 50M run folder." % repo
+            "%s revision %s does not have complete weights. Set PARENT_HF_REVISION to a candidate PR such as refs/pr/1, or PARENT_RUN_DIR to the completed run folder."
+            % (repo, pin)
         )
     pm = json.loads((parent/"metrics.json").read_text())
     cfg = Config(**json.loads((parent/"config.json").read_text()))
-    return parent, cfg, pm, parent/"model.safetensors", revision
+    return parent, cfg, pm, parent/"model.safetensors", resolved
 
 def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover=False,
-                 model_size="14M", device=None, parent_run_dir=None):
+                 model_size="14M", device=None, parent_run_dir=None,
+                 parent_hf_repo=None, parent_hf_revision=None):
     import torch
     from torch.utils.data import DataLoader
     from huggingface_hub import snapshot_download
@@ -237,8 +247,10 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
     from bloom.checkpoint import config_hash,load_weights,save_weights
     if model_size not in TEXT_REPOS or recipe not in RECIPES or type(steps) is not int or not 1<=steps<=10000:
         raise ValueError("Choose 14M or 50M, a known dataset, and 1–10,000 steps.")
-    if parent_run_dir and model_size=="50M" and RECIPES[recipe][0]!="instruction-tuning":
-        raise ValueError("PARENT_RUN_DIR is for instruction fine-tuning from a completed 50M run, not from-scratch pretraining.")
+    if parent_run_dir and (parent_hf_repo or parent_hf_revision):
+        raise ValueError("Set PARENT_RUN_DIR or PARENT_HF_REPO/PARENT_HF_REVISION, not both.")
+    if (parent_run_dir or parent_hf_repo or parent_hf_revision) and model_size=="50M" and RECIPES[recipe][0]!="instruction-tuning":
+        raise ValueError("PARENT_RUN_DIR and PARENT_HF_* are for instruction fine-tuning, not from-scratch pretraining.")
     device = device or pick_device()
     if device not in ("cuda","mps","cpu"):
         raise ValueError("Unsupported device.")
@@ -293,6 +305,15 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
             parent, cfg, pm, weight_path, revision = load_local_parent(parent_run_dir, model_size, repo_dir)
             tok = Tokenizer.from_file(str(parent/"tokenizer.json"))
             eot = tok.token_to_id("<|endoftext|>")
+        elif parent_hf_repo or parent_hf_revision:
+            hub_repo = parent_hf_repo or TEXT_REPOS[model_size]
+            if model_size=="50M" and hub_repo in {TEXT_REPOS["14M"], CHAT_REPOS["14M"]}:
+                raise ValueError("50M instruction tuning cannot start from Bloom 0.1.")
+            parent, cfg, pm, weight_path, revision = load_hub_parent(
+                api, hub_repo, token=api.token, revision=parent_hf_revision or None)
+            if (parent/"tokenizer.json").is_file():
+                tok = Tokenizer.from_file(str(parent/"tokenizer.json"))
+                eot = tok.token_to_id("<|endoftext|>")
         elif model_size=="50M":
             parent, cfg, pm, weight_path, revision = load_hub_parent(api, TEXT_REPOS["50M"], token=api.token)
         else:
@@ -334,6 +355,7 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
         settings = {"recipe":recipe,"steps":steps,"model_size":model_size,
                     "parent_revision":revision,"target_repo":target_repo_id,
                     "target_revision":target_revision,"parent_run_dir":str(parent_run_dir or ""),
+                    "parent_hf_repo":parent_hf_repo or "","parent_hf_revision":parent_hf_revision or "",
                     "seed":seed,"batch_size":batch_size,"grad_accum":grad_accum,
                     "learning_rate":lr,"tokenizer_sha256":sha256(parent/"tokenizer.json")}
         cache_revision = revision

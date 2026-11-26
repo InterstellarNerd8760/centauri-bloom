@@ -90,12 +90,18 @@ def test_notebook_defaults_and_pr_only():
     config=ast.parse(code[0])
     values={n.targets[0].id:n.value.value for n in config.body
             if isinstance(n,ast.Assign) and isinstance(n.targets[0],ast.Name) and isinstance(n.value,ast.Constant)}
-    assert values["MODEL"]=="14M"
-    assert values["DATASET"]=="Jaron"
+    assert values["MODEL"]=="50M"
+    assert values["DATASET"]==INSTRUCT_MIX
     assert values["STEPS"]==3000
+    assert values["PARENT_HF_REPO"]=="Centauri-Bloom/Bloom-Text-0.2"
+    assert values["PARENT_HF_REVISION"]=="refs/pr/1"
+    assert values["CONFIRM_DATA_PERMISSION"] is True
     assert "FineWeb-Edu + literature + TinyStories" in code[0]
     assert INSTRUCT_MIX in code[0]
     assert "PARENT_RUN_DIR" in code[0]
+    assert "parent_hf_repo" in "\n".join(code)
+    assert "parent_hf_revision" in "\n".join(code)
+    assert "download_jaron_repo" in "\n".join(code)
     assert "TARGET_REPOS" in "\n".join(code)
     assert "target_repo(" in "\n".join(code)
     assert "Bloom-Text-0.2" in "\n".join(code)
@@ -207,7 +213,9 @@ def test_instruct_mix_prepare_smoke(tmp_path, monkeypatch):
         meta = {"name":name,"dataset":"stub/"+name,"license_note":"test","filtered_count":len(rows),
                 "cap":INSTRUCT_SOURCES[name]["cap"],"weight":INSTRUCT_SOURCES[name]["weight"]}
         return rows, meta
-    monkeypatch.setattr("bloom.trainer_data.load_jaron_rows", fake_jaron)
+    def fake_sources(_path):
+        return fake_jaron(_path), [{"path":"unused.json","source_sha256":"abc","label":"test","source_count":8}]
+    monkeypatch.setattr("bloom.trainer_data.load_jaron_sources", fake_sources)
     t,v,sources,meta = prepare_instruct_mix(tok, 64, 0, 47, tmp_path/"unused.json", source_loader=fake_source)
     assert len(t)>0 and len(v)>0
     assert set(sources)>= {"Jaron","Dolly-15k","OpenAssistant OASST1","GSM8K"}
@@ -231,3 +239,66 @@ def test_instruct_mix_requires_jaron():
         assert "Jaron" in str(exc)
     else:
         raise AssertionError("expected missing Jaron path to fail")
+
+def test_load_hub_parent_uses_requested_revision(monkeypatch, tmp_path):
+    from bloom.model import Config
+    from bloom.trainer import load_hub_parent
+    (tmp_path/"config.json").write_text(json.dumps({"vocab_size":16,"context":4,"width":8,"heads":2,"layers":1}))
+    (tmp_path/"metrics.json").write_text(json.dumps({"step":1,"weights_sha256":"x","config_sha256":"y"}))
+    (tmp_path/"model.safetensors").write_bytes(b"weights")
+    (tmp_path/"tokenizer.json").write_text("{}")
+    seen = {}
+    class Api:
+        def model_info(self, repo, revision=None):
+            seen["model_info"] = (repo, revision)
+            return SimpleNamespace(sha="abc123def")
+    def fake_snapshot(repo, revision=None, token=None, allow_patterns=None):
+        seen["snapshot"] = (repo, revision)
+        return tmp_path
+    monkeypatch.setattr("huggingface_hub.snapshot_download", fake_snapshot)
+    parent, cfg, pm, weights, resolved = load_hub_parent(Api(), "Centauri-Bloom/Bloom-Text-0.2",
+                                                         token="tok", revision="refs/pr/1")
+    assert seen["model_info"] == ("Centauri-Bloom/Bloom-Text-0.2", "refs/pr/1")
+    assert seen["snapshot"] == ("Centauri-Bloom/Bloom-Text-0.2", "refs/pr/1")
+    assert resolved == "abc123def"
+    assert parent == tmp_path and weights == tmp_path/"model.safetensors"
+    assert isinstance(cfg, Config) and pm["step"]==1
+
+def test_run_training_rejects_mixed_parents():
+    from bloom.trainer import run_training, TEXT_REPOS, CHAT_REPOS
+    class Api:
+        token = "x"
+    try:
+        run_training(Api(), "Instruct mix (Jaron + open)", 10, ".", ".",
+                     model_size="50M", device="cpu", parent_run_dir="/tmp/run",
+                     parent_hf_revision="refs/pr/1")
+    except ValueError as exc:
+        assert "not both" in str(exc)
+    else:
+        raise AssertionError("expected mixed-parent error")
+    assert "Centauri-Bloom/Bloom-Text-0.1" == TEXT_REPOS["14M"]
+    assert "Centauri-Bloom/Bloom-Chat-0.1" == CHAT_REPOS["14M"]
+
+def test_jaron_sources_allowlist_and_combine(tmp_path, monkeypatch):
+    from bloom.notebook_workflow import sha256
+    from bloom.trainer_data import KNOWN_JARON_SHAS, load_jaron_rows, load_jaron_sources, jaron_paths
+    good = [{"prompt":"Hello?","response":"Hi."},{"prompt":"Hi?","response":"Hello."}]
+    a = tmp_path/"a.json"
+    b = tmp_path/"b.json"
+    a.write_text(json.dumps(good))
+    b.write_text(json.dumps([{"prompt":"Hello?","response":"Hi."},{"prompt":"Other?","response":"Yes."}]))
+    digest_a, digest_b = sha256(a), sha256(b)
+    # Unknown files are rejected.
+    try:
+        load_jaron_rows(a)
+    except ValueError as exc:
+        assert "reviewed" in str(exc)
+    else:
+        raise AssertionError("expected allowlist failure")
+    monkeypatch.setitem(KNOWN_JARON_SHAS, digest_a, "file-a")
+    monkeypatch.setitem(KNOWN_JARON_SHAS, digest_b, "file-b")
+    rows, meta = load_jaron_sources([a, b, a])
+    assert len(rows)==4  # combine raw; de-duplication happens in instruction_pairs
+    assert [m["label"] for m in meta]==["file-a","file-b"]
+    assert jaron_paths(str(a)+","+str(b))==[a,b]
+

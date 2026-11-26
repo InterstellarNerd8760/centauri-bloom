@@ -11,6 +11,11 @@ from pathlib import Path
 from bloom.notebook_workflow import sha256
 
 JARON_SHA = "2b9f251e0c0ae172e867845e9accaed7a2d59af16b047eb24e0c4176f62b60da"
+# Reviewed contributor files only. A later file can be added here after a quality check;
+# load_jaron_sources combines allowlisted files and instruction_pairs de-duplicates them.
+KNOWN_JARON_SHAS = {
+    JARON_SHA: "bloom_instruction_expanded",
+}
 INSTRUCT_MIX = "Instruct mix (Jaron + open)"
 RECIPES = {
     "Jaron": ("instruction-tuning", ()),
@@ -231,14 +236,63 @@ def filter_pairs(rows, tok, context, eot):
             out.append({"prompt": q.strip(), "response": a.strip()})
     return out
 
+def jaron_paths(jaron_path):
+    """Accept a path, comma-separated paths, or a list of paths."""
+    if not jaron_path:
+        return []
+    if isinstance(jaron_path, (list, tuple)):
+        items = [str(p) for p in jaron_path]
+    else:
+        text = str(jaron_path)
+        items = [part.strip() for part in text.split(",")] if "," in text else [text]
+    paths = [Path(item).expanduser() for item in items if item and str(item).strip() not in ("None",)]
+    if not paths:
+        raise ValueError("No Jaron JSON paths were provided.")
+    return paths
+
 def load_jaron_rows(path):
     path = Path(path)
-    if sha256(path) != JARON_SHA:
-        raise ValueError("Jaron JSON hash differs from the reviewed original.")
+    digest = sha256(path)
+    if digest not in KNOWN_JARON_SHAS:
+        raise ValueError("Jaron JSON hash is not a reviewed contributor file: " + path.name)
     rows = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(rows, list):
         raise ValueError("Expected a JSON array.")
     return rows
+
+def load_jaron_sources(jaron_path):
+    """Load one or more reviewed Jaron JSON files and record per-file hashes."""
+    files, rows, sources, seen = jaron_paths(jaron_path), [], [], set()
+    for path in files:
+        digest = sha256(path)
+        if digest in seen:
+            continue
+        seen.add(digest)
+        part = load_jaron_rows(path)
+        rows.extend(part)
+        sources.append({"path": path.name, "source_sha256": digest,
+                        "label": KNOWN_JARON_SHAS[digest], "source_count": len(part)})
+    if not rows:
+        raise ValueError("Jaron JSON files were empty.")
+    return rows, sources
+
+def download_jaron_repo(repo, token, revision="main"):
+    """Fetch reviewed Jaron JSON files from a private Hugging Face dataset repo."""
+    from huggingface_hub import snapshot_download
+    root = Path(snapshot_download(repo_id=repo, repo_type="dataset", revision=revision or "main",
+                                  token=token, allow_patterns=["*.json"]))
+    matches, seen = [], set()
+    for path in sorted(root.rglob("*.json")):
+        digest = sha256(path)
+        if digest in KNOWN_JARON_SHAS and digest not in seen:
+            seen.add(digest)
+            matches.append(path)
+    if not matches:
+        raise ValueError(
+            "No reviewed Jaron JSON was found in %s. Upload bloom_instruction_expanded.json to that private dataset, or set JARON_FILE."
+            % repo
+        )
+    return matches
 
 def dolly_pair(row):
     inst, resp = row.get("instruction"), row.get("response")
@@ -414,13 +468,14 @@ def _cap_split(rows, cap, seed):
 def prepare_instruct_mix(tokenizer, context, eot, seed, jaron_path, source_loader=stream_instruct_source):
     if not jaron_path:
         raise ValueError("Instruct mix requires the original Jaron JSON.")
-    raw_jaron = load_jaron_rows(jaron_path)
+    raw_jaron, file_meta = load_jaron_sources(jaron_path)
     jaron_rows = filter_pairs(raw_jaron, tokenizer, context, eot)
     source_rows = {"Jaron": jaron_rows}
-    metadata = [{"name": "Jaron", "dataset": "Jaron instruction expanded", "source_sha256": JARON_SHA,
-                 "source_count": len(raw_jaron), "filtered_count": len(jaron_rows),
+    metadata = [{"name": "Jaron", "dataset": "Jaron instruction expanded",
+                 "source_sha256": file_meta[0]["source_sha256"] if len(file_meta)==1 else [f["source_sha256"] for f in file_meta],
+                 "files": file_meta, "source_count": len(raw_jaron), "filtered_count": len(jaron_rows),
                  "cap": JARON_MIX_CAP, "weight": JARON_MIX_WEIGHT,
-                 "note": "Private contributor input; raw examples are not uploaded. Confirm permission and review accuracy. No public license is recorded in this repository."}]
+                 "note": "Private contributor input; raw examples are not uploaded. Confirm permission and review accuracy. No public license is recorded in this repository. Multiple reviewed files are combined and de-duplicated."}]
     for name in INSTRUCT_SOURCES:
         rows, meta = source_loader(name, tokenizer, context, eot)
         source_rows[name] = rows
@@ -462,8 +517,10 @@ def prepare(recipe, repo, tokenizer, context, eot, seed, jaron_path=None):
         if recipe==INSTRUCT_MIX:
             return prepare_instruct_mix(tokenizer, context, eot, seed, jaron_path)
         if recipe=="Jaron":
-            rows = load_jaron_rows(jaron_path)
-            source = {"dataset":"Jaron instruction expanded","source_sha256":JARON_SHA,
+            rows, file_meta = load_jaron_sources(jaron_path)
+            source = {"dataset":"Jaron instruction expanded",
+                      "source_sha256": file_meta[0]["source_sha256"] if len(file_meta)==1 else [f["source_sha256"] for f in file_meta],
+                      "files": file_meta,
                       "note":"Private contributor input; raw examples are not uploaded. Confirm permission and review accuracy."}
         else:
             rows = arithmetic_rows()
