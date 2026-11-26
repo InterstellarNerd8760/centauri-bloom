@@ -14,7 +14,7 @@ GGUF_NAME = "bloom-f32.gguf"
 
 def tensor_mapping(cfg):
     mapping = {"tokens.weight": "token_embd.weight",
-               "positions.weight": "position_embd.weight",
+               "positions.weight": "pos_embd.weight",
                "norm.weight": "output_norm.weight",
                "norm.bias": "output_norm.bias",
                "head.weight": "output.weight"}
