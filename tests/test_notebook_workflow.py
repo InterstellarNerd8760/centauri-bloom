@@ -6,7 +6,7 @@ import pytest
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from bloom.notebook_workflow import cached_revision, parent_total, preflight, restore_corpus, save_corpus
+from bloom.notebook_workflow import cached_revision, detect_environment, parent_total, pick_device, preflight, restore_corpus, save_corpus
 
 def test_notebooks_compile():
     for path in Path("notebooks").glob("*.ipynb"):
@@ -39,3 +39,10 @@ def test_unknown_cumulative_not_invented():
     assert parent_total({"step": 4500, "train_tokens": 24576000, "parent_reported_train_tokens": 49152000, "train_tokens_scope": "this continuation only"}) == 73728000
     assert parent_total({"step": 7500, "train_tokens": 1000, "train_tokens_scope": "this continuation only; non-padding input tokens"}) is None
     assert parent_total({"step": 7500, "cumulative_train_tokens": 98000000}) == 98000000
+
+def test_pick_device_and_environment():
+    device = pick_device()
+    assert device in {"cuda", "mps", "cpu"}
+    # CI and the local checkout are not Colab or Kaggle.
+    assert detect_environment() == "local"
+    preflight(device if device != "cuda" else "cpu")

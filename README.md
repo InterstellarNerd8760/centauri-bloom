@@ -18,7 +18,7 @@ Founding phase. No verified official model release or live distributed network e
 
 [**Open the unified trainer in Google Colab**](https://colab.research.google.com/github/InterstellarNerd8760/centauri-bloom/blob/main/notebooks/bloom-trainer.ipynb) · [Upload recovery](https://colab.research.google.com/github/InterstellarNerd8760/centauri-bloom/blob/main/notebooks/bloom-upload-recovery.ipynb)
 
-Select a dataset and step budget (default: Jaron, 3,000 steps), use a GPU, confirm data permission, authorize a Hugging Face token, train, and review the automatically submitted PR. Every new run starts from the latest merged [Bloom-Text-0.1 checkpoint](https://huggingface.co/Centauri-Bloom/Bloom-Text-0.1). The selected dataset determines whether the run performs pretraining or instruction tuning. Raw contributor data stays private. For recovery and dataset details see the [unified training guide](docs/unified-training.md).
+The same notebook runs on Colab, Kaggle, or a local checkout (CUDA, then MPS, then CPU). Select a model size, dataset, and step budget (defaults: 14M, Jaron, 3,000 steps), confirm data permission, authorize a Hugging Face token, train, and review the automatically submitted PR. 14M runs continue from the latest merged [Bloom-Text-0.1 checkpoint](https://huggingface.co/Centauri-Bloom/Bloom-Text-0.1). 50M runs start from `configs/bloom-0.2-50m.json` and open a PR against `Centauri-Bloom/Bloom-Text-0.2` without modifying the 14M model. The selected dataset determines whether the run performs pretraining or instruction tuning. Raw contributor data stays private. For recovery, environment setup, and dataset details see the [unified training guide](docs/unified-training.md).
 
 ## Project resources
 

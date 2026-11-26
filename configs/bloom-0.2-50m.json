@@ -1,0 +1,8 @@
+{
+  "vocab_size": 8192,
+  "context": 512,
+  "width": 640,
+  "heads": 10,
+  "layers": 10,
+  "notes": "54,807,040 parameters, measured by instantiating bloom.model.Bloom on CPU. Same 8192-vocab BPE tokenizer and context as Bloom-Text-0.1, but trained from scratch and published to a separate Hugging Face repo. Do not load 14M weights into this config, and do not overwrite configs/bloom-0.1.json or Bloom-Text-0.1."
+}

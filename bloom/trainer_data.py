@@ -19,7 +19,16 @@ RECIPES = {
     "Cosmopedia": ("knowledge-pretraining", ("Cosmopedia",)),
     "Public-domain literature": ("continued-pretraining", ("Public-domain literature",)),
     "Public-domain + TinyStories": ("continued-pretraining", ("Public-domain literature", "TinyStories")),
+    "FineWeb-Edu + literature + TinyStories": ("pretraining", ("FineWeb-Edu", "Public-domain literature", "TinyStories")),
     "Arithmetic instruction pilot": ("instruction-tuning", ()),
+}
+# Optional per-source train token budgets. Unlisted sources use SOURCES defaults
+# or, for public-domain literature, the full verified corpus.
+RECIPE_BUDGETS = {
+    "FineWeb-Edu + literature + TinyStories": {
+        "FineWeb-Edu": 20_000_000,
+        "TinyStories": 500_000,
+    },
 }
 SOURCES = {
     "FineWeb-Edu": ("HuggingFaceFW/fineweb-edu", "sample-10BT", "ODC-By 1.0; underlying web rights vary", 7_500_000),
@@ -189,11 +198,12 @@ def prepare(recipe, repo, tokenizer, context, eot, seed, jaron_path=None):
                       train_count=len(t),validation_count=len(v),split="normalized prompt hash; 10% held out")
         return t,v,{},{"recipe":recipe,"training_track":track,"sources":[source]}
     seen, train_sets, val_sets, metadata = set(), [], {}, []
+    budgets = RECIPE_BUDGETS.get(recipe, {})
     for name in names:
         if name=="Public-domain literature":
             tr,va,meta = public_domain(repo,tokenizer)
         else:
-            tr,va,meta = stream_source(name,tokenizer,context,seed,seen)
+            tr,va,meta = stream_source(name,tokenizer,context,seed,seen,budget=budgets.get(name))
         random.Random(seed).shuffle(tr)
         random.Random(seed).shuffle(va)
         train_sets.append(encode_windows(tr,context,eot))
