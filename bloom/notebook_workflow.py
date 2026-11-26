@@ -127,13 +127,149 @@ def restore_corpus(path, revision, context, vocab_size):
             i += 1
         return ds("train"), ds("val"), sources
 
+def upload_base_revision(metrics):
+    """Return the target-repo revision a candidate PR should be based on.
+
+    For instruction fine-tunes the text parent and the Chat upload repo differ, so
+    `target_revision` (Chat/main at train time) is the PR base. `parent_revision`
+    remains the pretrained checkpoint SHA.
+    """
+    target = metrics.get("target_revision")
+    if target:
+        return target
+    return metrics.get("parent_revision")
+
+def _is_run_dir(path):
+    path = Path(path)
+    if not path.is_dir() or not (path / "metrics.json").is_file():
+        return False
+    if not (path / "tokenizer.json").is_file() or not (path / "config.json").is_file():
+        return False
+    return bool(list(path.glob("step-*.safetensors")) or (path / "model.safetensors").is_file()
+                or (path / "partial.safetensors").is_file())
+
+def _collect_run_dirs(root, seen, matches):
+    if not root.is_dir():
+        return
+    for metrics_path in root.rglob("metrics.json"):
+        cand = metrics_path.parent
+        key = str(cand.resolve()) if cand.exists() else str(cand)
+        if key in seen or not _is_run_dir(cand):
+            continue
+        seen.add(key)
+        matches.append(cand)
+
+def _pick_run_dir(path, matches):
+    if path.name:
+        named = [m for m in matches if m.name == path.name or path.name in m.parts]
+        if len(named) == 1:
+            return named[0]
+        if named:
+            matches = named
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        return None
+    raise ValueError("Several completed runs were found; set RECOVER_RUN_DIR to one of: "
+                     + ", ".join(str(m) for m in matches))
+
+def find_run_dir(path):
+    """Resolve a completed run folder, searching nested Kaggle input mounts if needed."""
+    path = Path(path).expanduser()
+    if _is_run_dir(path):
+        return path
+    seen, matches = set(), []
+    if path.exists():
+        _collect_run_dirs(path, seen, matches)
+        picked = _pick_run_dir(path, matches)
+        if picked is not None:
+            return picked
+    kaggle_input = Path("/kaggle/input")
+    if kaggle_input.is_dir():
+        _collect_run_dirs(kaggle_input, seen, matches)
+        picked = _pick_run_dir(path, matches)
+        if picked is not None:
+            return picked
+    raise FileNotFoundError(
+        "No completed Bloom run was found at %s. Point RECOVER_RUN_DIR at the run folder or its Kaggle input parent."
+        % path
+    )
+
+def _is_writable(path):
+    path = Path(path)
+    try:
+        resolved = path.resolve()
+        kaggle_input = Path("/kaggle/input")
+        if kaggle_input.is_dir() and (kaggle_input in resolved.parents or resolved == kaggle_input.resolve()):
+            return False
+        if not os.access(path, os.W_OK):
+            return False
+        probe = path / ".write-test"
+        probe.write_text("ok")
+        probe.unlink()
+        return True
+    except OSError:
+        return False
+
+def prepare_recovered_run(path, writable_root):
+    """Find a completed run and copy it to a writable folder when the source is read-only."""
+    import shutil
+    src = find_run_dir(path)
+    writable_root = Path(writable_root)
+    writable_root.mkdir(parents=True, exist_ok=True)
+    if _is_writable(src):
+        return src
+    dest = writable_root / src.name
+    if dest.resolve() != src.resolve():
+        if not dest.exists():
+            shutil.copytree(src, dest)
+        elif not _is_run_dir(dest):
+            raise RuntimeError("Writable copy %s exists but is not a complete run folder." % dest)
+    return dest
+
+def repair_completed_metrics(out_dir, steps=None):
+    """Fix additional_steps when a continuation recorded the cumulative step count."""
+    out = Path(out_dir)
+    metrics = json.loads((out / "metrics.json").read_text())
+    settings = {}
+    if (out / "run-settings.json").is_file():
+        settings = json.loads((out / "run-settings.json").read_text())
+    requested = int(steps) if steps is not None else (int(settings["steps"]) if settings.get("steps") is not None else None)
+
+    def has_weights(n):
+        return (out / ("step-%06d.safetensors" % int(n))).is_file()
+
+    additional = metrics.get("additional_steps")
+    repaired = False
+    if requested is not None and additional != requested and has_weights(requested):
+        metrics = dict(metrics)
+        metrics["additional_steps"] = requested
+        repaired = True
+    elif (requested is None and settings.get("steps") is not None
+          and additional != settings["steps"] and has_weights(settings["steps"])):
+        metrics = dict(metrics)
+        metrics["additional_steps"] = int(settings["steps"])
+        repaired = True
+    if repaired:
+        tmp = out / "metrics.json.tmp"
+        tmp.write_text(json.dumps(metrics, indent=2, sort_keys=True, allow_nan=False))
+        tmp.replace(out / "metrics.json")
+        print("Repaired additional_steps to", metrics["additional_steps"], "in", out, flush=True)
+    return metrics
+
 def submit_candidate(api, repo, out_dir, steps, revision, run_name):
     from huggingface_hub import CommitOperationAdd, constants
     os.environ["HF_HUB_DISABLE_XET"] = "1"
     constants.HF_HUB_DISABLE_XET = True
     out = Path(out_dir)
-    metrics = json.loads((out / "metrics.json").read_text())
-    if metrics.get("additional_steps") != steps or metrics.get("parent_revision") != revision:
+    if not (out / "metrics.json").is_file():
+        out = find_run_dir(out)
+    if not _is_writable(out):
+        working = Path("/kaggle/working/centauri-bloom-runs") if Path("/kaggle/working").is_dir() else out.parent
+        out = prepare_recovered_run(out, working)
+    metrics = repair_completed_metrics(out, steps=steps)
+    expected = upload_base_revision(metrics)
+    if metrics.get("additional_steps") != steps or expected != revision:
         raise ValueError("Incomplete or mismatched training run")
     weights = out / f"step-{steps:06d}.safetensors"
     paths = {"model.safetensors": weights, **{n: out / n for n in

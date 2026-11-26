@@ -264,6 +264,17 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
     completed = (out/"metrics.json").exists()
     has_partial = (out/"partial.json").exists() or (out/"partial.safetensors").exists()
     if completed:
+        if recover:
+            from bloom.notebook_workflow import repair_completed_metrics
+            metrics = repair_completed_metrics(out, steps=steps)
+            if metrics.get("dataset") not in (None, recipe):
+                raise RuntimeError("Completed run dataset differs from the current notebook settings.")
+            if metrics.get("model_size", "14M") != model_size:
+                raise RuntimeError("Completed run model size differs from the current notebook settings.")
+            if metrics.get("additional_steps") != steps:
+                raise RuntimeError("Completed run step count differs from STEPS after repair.")
+            print("Completed run found; skipping training:", out, flush=True)
+            return metrics
         raise RuntimeError("This run already completed. Use upload recovery if you need to submit the PR.")
     if has_partial and not recover:
         raise RuntimeError("This run has checkpoints. Set RECOVER_RUN_DIR to this folder to resume, or start a new run.")
