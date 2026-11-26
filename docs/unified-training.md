@@ -2,10 +2,20 @@
 
 [Open Colab](https://colab.research.google.com/github/InterstellarNerd8760/centauri-bloom/blob/main/notebooks/bloom-trainer.ipynb) · [Upload recovery](https://colab.research.google.com/github/InterstellarNerd8760/centauri-bloom/blob/main/notebooks/bloom-upload-recovery.ipynb)
 
-1. Select a GPU runtime.
-2. Choose a dataset and optimizer step budget; defaults are Jaron and 3,000. Confirm permission for the selected data.
-3. Run setup, authorize the Hugging Face token in the password widget, then run training.
+The same notebook also runs on Kaggle and locally. It auto-detects the environment: Colab uses Drive plus a Colab `HF_TOKEN` secret, Kaggle uses `/kaggle/working` plus `UserSecretsClient`, and a local checkout uses `./runs` plus the `HF_TOKEN` environment variable. The trainer picks CUDA, then MPS, then CPU. fp16 autocast is used only on CUDA.
+
+1. On Colab choose a T4 GPU runtime. On Kaggle enable Internet and a GPU accelerator. Locally open the notebook from a repo checkout.
+2. Choose a model size, dataset, and optimizer step budget. Defaults remain 14M, Jaron, and 3,000. Confirm permission for the selected data.
+3. Run setup, authorize the Hugging Face token, then run training.
 4. Run the last cell to submit the saved candidate PR. Review evaluation and merge before another run.
+
+## 14M and 50M
+
+The 14M path is unchanged: it continues from the latest merged [Bloom-Text-0.1](https://huggingface.co/Centauri-Bloom/Bloom-Text-0.1) checkpoint and opens a PR against that repo. Do not modify `configs/bloom-0.1.json`, the baseline, or Bloom-Text-0.1 from a 50M run.
+
+The 50M path (`configs/bloom-0.2-50m.json`) is a new from-scratch model: width 640, 10 heads, 10 layers, context 512, 54,807,040 parameters, measured with `bloom.model.Bloom`. It reuses the 14M 8192-vocab BPE tokenizer but does not load 14M weights. Candidates are submitted to `Centauri-Bloom/Bloom-Text-0.2`. Create that Hugging Face repo once if it does not exist; the trainer will not create it. On a free T4 the 50M run uses batch size 8, gradient accumulation 4, and a 3e-4 learning rate, without gradient checkpointing. Effective tokens per step are the same as the 14M continuation (16,384). A 10,000-step run is about 164M token exposures. Expect roughly 5–11 hours on a free T4, or about 5–9k tokens/sec; Colab and Kaggle sessions can disconnect, so set `RECOVER_RUN_DIR` to the same folder to resume from the last checkpoint, including optimizer state when `partial-optimizer.pt` is present. CPU is supported but impractical for a full 50M run; MPS or CUDA is preferred locally.
+
+For the 50M pretraining mix choose **FineWeb-Edu + literature + TinyStories**: about 20M FineWeb-Edu `sample-10BT` tokens (ODC-By 1.0; underlying web rights vary), the full verified public-domain-v1 Gutenberg corpus, and about 500k TinyStories tokens (CDLA-Sharing-1.0). TinyStories is a much smaller share than in the 14M story-heavy mix. Do not use unlicensed sources such as `open-phi/textbooks`, and keep the contributor SFT corpus held unless you are doing a separate instruction run with permission.
 
 | Dataset | Objective | Preparation |
 |---|---|---|
@@ -16,15 +26,16 @@
 | Cosmopedia | Next-token pretraining | Stanford subset, approximately 3M source tokens |
 | Public-domain literature | Next-token pretraining | Repository's pinned and verified public-domain-v1 corpus |
 | Public-domain + TinyStories | Next-token pretraining | Verified literature corpus plus approximately 2.5M TinyStories tokens |
+| FineWeb-Edu + literature + TinyStories | Next-token pretraining | Approximately 20M FineWeb-Edu tokens, the full public-domain-v1 corpus, and approximately 500k TinyStories tokens; intended for 50M from-scratch runs |
 | Arithmetic instruction pilot | Response-only instruction tuning | Original generated arithmetic and basic examples; experimental |
 
-Source token budgets are not the number of training exposures. Each step uses 16 examples per microbatch and two accumulated microbatches. Instruction batches mask prompts and padding in the loss and count non-padding input tokens separately. The model size and tokenizer do not change. Repeated passes over small datasets can overfit. The original literature + TinyStories notebook used a different story sampling budget; the new selector uses bounded streaming.
+Source token budgets are not the number of training exposures. 14M continuation steps use 16 examples per microbatch and two accumulated microbatches. 50M from-scratch steps use 8 examples per microbatch and four accumulated microbatches, so both keep a 32-example effective batch. Instruction batches mask prompts and padding in the loss and count non-padding input tokens separately. The 14M tokenizer is reused for 50M; the 14M weights are not. Repeated passes over small datasets can overfit. The original literature + TinyStories notebook used a different story sampling budget; the new selector uses bounded streaming.
 
 Jaron's original JSON is read from Drive's `MyDrive/centauri-bloom-data/bloom_instruction_expanded.json`, or selected when requested. Do not redistribute it without permission. Review licenses, provenance, accuracy and underlying content rights before training and merging. FineMath and Wikipedia were optional gated sources in a prior experimental notebook, not confirmed training datasets; the unified selector does not enable them.
 
 ## Recovery
 
-Each run stores its settings, pinned parent, token windows, provenance, periodic latest weights, evaluation and completed checkpoint in Drive. For a restart before the first checkpoint, set RECOVER_RUN_DIR to that unified run folder and keep the original settings and unchanged parent. Partial optimizer-state resume is not implemented. Completed candidates can be submitted from the separate upload recovery notebook without retraining; failed uploads never justify rerunning training. A changed parent blocks submission. The token must be authorized by Hugging Face; authentication alone cannot guarantee PR permission.
+Each run stores its settings, pinned parent or tokenizer revision, token windows, provenance, periodic latest weights, optimizer state, evaluation and completed checkpoint in the environment's output directory (Drive on Colab, `/kaggle/working` on Kaggle, `./runs` locally). To resume, set RECOVER_RUN_DIR to that unified run folder and keep the original settings. A restart before the first checkpoint reuses the processed corpus. Mid-run resume loads the last `partial.safetensors` and, when present, `partial-optimizer.pt`. Completed candidates can be submitted from the separate upload recovery notebook without retraining; failed uploads never justify rerunning training. For 14M, a changed parent blocks submission. The token must be authorized by Hugging Face; authentication alone cannot guarantee PR permission.
 
 ## Historical notebooks
 

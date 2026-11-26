@@ -11,6 +11,26 @@ def sha256(path):
             digest.update(chunk)
         return digest.hexdigest()
 
+def pick_device():
+    """Prefer CUDA, then MPS, then CPU. fp16 autocast is applied only on CUDA."""
+    import torch
+    if torch.cuda.is_available():
+        return "cuda"
+    mps = getattr(torch.backends, "mps", None)
+    if mps is not None and mps.is_available():
+        return "mps"
+    return "cpu"
+
+def detect_environment():
+    """Return 'kaggle', 'colab', or 'local' without importing Bloom training code."""
+    if Path("/kaggle/working").is_dir():
+        return "kaggle"
+    try:
+        import google.colab  # noqa: F401
+    except ImportError:
+        return "local"
+    return "colab"
+
 def preflight(device="cpu"):
     # Import dependencies before the first lazy Dynamo import.
     import sympy
@@ -18,6 +38,10 @@ def preflight(device="cpu"):
     import torch
     if device == "cuda" and not torch.cuda.is_available():
         raise RuntimeError("Select a CUDA runtime before training.")
+    if device == "mps":
+        mps = getattr(torch.backends, "mps", None)
+        if mps is None or not mps.is_available():
+            raise RuntimeError("MPS is not available.")
     try:
         p = torch.nn.Parameter(torch.ones(2, device=device))
         opt = torch.optim.AdamW([p], lr=1e-4)
@@ -44,13 +68,19 @@ def parent_total(metrics):
         return prev + n
     return None
 
-def auth_client(repo, token):
+def auth_client(repo, token, require_repo=True):
     from huggingface_hub import HfApi
     if not token or not token.strip():
         raise ValueError("An HF token is required for submitting a PR.")
     client = HfApi(token=token.strip())
     client.whoami()
-    client.model_info(repo)
+    try:
+        client.model_info(repo)
+    except Exception:
+        if require_repo:
+            raise
+        print("Target repo not found yet:", repo,
+              "| Training can proceed. Create the repo on Hugging Face before the upload cell. This trainer will not create it.")
     return client
 
 def save_corpus(path, train_ds, val_ds, revision, source_loaders=None):
@@ -117,8 +147,18 @@ def submit_candidate(api, repo, out_dir, steps, revision, run_name):
     if receipt.exists():
         print("Already submitted:", receipt.read_text())
         return json.loads(receipt.read_text())
-    if api.model_info(repo).sha != revision:
-        raise RuntimeError("Main changed during training. Preserve the candidate; do not overwrite the newer checkpoint.")
+    try:
+        current = api.model_info(repo).sha
+    except Exception as exc:
+        raise RuntimeError(
+            "Target repo %s does not exist. Create it on Hugging Face (an empty model repo is enough), then retry this upload. This trainer will not create or overwrite repos." % repo
+        ) from exc
+    if revision:
+        if current != revision:
+            raise RuntimeError("Main changed during training. Preserve the candidate; do not overwrite the newer checkpoint.")
+    else:
+        # First from-scratch candidate; the repo existed only at upload time.
+        revision = current
     # Export the exact candidate, not a stale GGUF from the parent revision.
     # Do this only after all checkpoint/provenance checks; no training is rerun.
     from bloom.gguf_export import GGUF_NAME, export_candidate
