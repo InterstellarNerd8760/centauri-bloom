@@ -14,6 +14,12 @@ Original project code and documentation are licensed under [Apache License 2.0](
 
 Founding phase. No verified official model release or live distributed network exists yet. The first goal is a reproducible two-worker experiment, not a production chatbot. Community image and browser-based text training experiments are underway; their compatibility and reproducibility remain unverified.
 
+## Train Bloom
+
+[**Open the unified trainer in Google Colab**](https://colab.research.google.com/github/InterstellarNerd8760/centauri-bloom/blob/main/notebooks/bloom-trainer.ipynb) · [Upload recovery](https://colab.research.google.com/github/InterstellarNerd8760/centauri-bloom/blob/main/notebooks/bloom-upload-recovery.ipynb)
+
+Select a dataset and step budget (default: Jaron, 3,000 steps), use a GPU, confirm data permission, authorize a Hugging Face token, train, and review the automatically submitted PR. Every new run starts from the latest merged [Bloom-Text-0.1 checkpoint](https://huggingface.co/Centauri-Bloom/Bloom-Text-0.1). The selected dataset determines whether the run performs pretraining or instruction tuning. Raw contributor data stays private. For recovery and dataset details see the [unified training guide](docs/unified-training.md).
+
 ## Project resources
 
 GitHub is the canonical home for project documentation, source code, technical decisions and issues.
@@ -21,13 +27,12 @@ GitHub is the canonical home for project documentation, source code, technical d
 - [Design system](DESIGN.md) — shared visual standards for Bloom websites and tools.
 - [Architecture](docs/architecture.md) — model and collaborative training protocol.
 - [Roadmap](docs/roadmap.md) — development milestones.
-- [Contributor training notebook](notebooks/contributor-training.ipynb) — bounded training and local artifact export.
-- [Colab T4 training notebook](notebooks/colab-bloom-0.1-t4.ipynb) — free-tier T4 GPU training of `configs/bloom-0.1.json` (~14M) with Drive checkpoints.
+- [Historical notebooks](notebooks/) — retained for reproducibility; use the unified trainer for new continuation runs.
 - [Training guide](docs/training.md) — saved baseline, CPU/CUDA and continuation.
 - [Text dataset and tokenizer](docs/text-dataset.md) — offline example, corpus reconstruction and checkpoint metadata.
 - [Governance](GOVERNANCE.md) and [contributing](CONTRIBUTING.md) — community workflow.
 - [Community model website](https://mironox.de/Bloom) and [Tiny GPT Trainer](https://mironox.de/Bloom/Training) — independent experimental tools, not verified official releases.
-- Hugging Face — planned canonical storage for reviewed model weights and licensed datasets; organization setup pending confirmation.
+- [Hugging Face](https://huggingface.co/Centauri-Bloom/Bloom-Text-0.1) — canonical experimental checkpoint storage; candidate PRs require review.
 
 ### Community experiments
 
@@ -35,7 +40,7 @@ The Tiny GPT Trainer advertises WebGPU training, a 14.9M-parameter byte-level tr
 
 An experimental text-conditioned image checkpoint has also been shared privately. Its training code, dataset provenance, license and outputs need review before any public release. No contributor weights or datasets are published here without permission.
 
-The proposed text baseline in this repository is separate from the browser prototype until architecture and checkpoint compatibility have been demonstrated. Cloud training is a planned option, not an active service.
+The proposed text baseline in this repository is separate from the browser prototype until architecture and checkpoint compatibility have been demonstrated. Cloud continuation training is available through the unified Colab notebook.
 
 ## Quick start
 
