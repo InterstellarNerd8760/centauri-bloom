@@ -7,12 +7,26 @@ import time
 from pathlib import Path
 
 from bloom.notebook_workflow import parent_total, pick_device, save_corpus, restore_corpus, sha256
-from bloom.trainer_data import RECIPES, prepare
+from bloom.trainer_data import RECIPES, INSTRUCT_MIX, prepare
 
 REPO_ID = "Centauri-Bloom/Bloom-Text-0.1"
-TARGET_REPOS = {"14M": REPO_ID, "50M": "Centauri-Bloom/Bloom-Text-0.2"}
+TEXT_REPOS = {"14M": REPO_ID, "50M": "Centauri-Bloom/Bloom-Text-0.2"}
+CHAT_REPOS = {"14M": "Centauri-Bloom/Bloom-Chat-0.1", "50M": "Centauri-Bloom/Bloom-Chat-0.2"}
+TARGET_REPOS = TEXT_REPOS
 CONFIG_50M = "configs/bloom-0.2-50m.json"
 PARAM_COUNT_50M = 54_807_040
+
+def target_repo(model_size, recipe):
+    """Pretraining stays on Bloom-Text-*; 50M instruction and the open instruct mix use Bloom-Chat-*."""
+    if model_size not in TEXT_REPOS or recipe not in RECIPES:
+        raise ValueError("Choose 14M or 50M and a known dataset.")
+    track, _ = RECIPES[recipe]
+    if track == "instruction-tuning" and (model_size == "50M" or recipe == INSTRUCT_MIX):
+        return CHAT_REPOS[model_size]
+    return TEXT_REPOS[model_size]
+
+def uses_chat_repo(model_size, recipe):
+    return target_repo(model_size, recipe) in CHAT_REPOS.values()
 
 def collate_instruction(batch):
     import torch
@@ -156,16 +170,75 @@ def train_model(model, train_loader, val_loader, source_loaders, device, steps, 
               "note":"Same validation windows and greedy qualitative prompts; prior training overlap possible. Not a scored benchmark."}
     return report
 
+
+def load_local_parent(path, model_size, repo_dir):
+    """Load a completed trainer run folder as the instruction-tuning parent."""
+    from bloom.model import Config
+    from bloom.checkpoint import config_hash
+    path = Path(path)
+    metrics_path, config_path = path/"metrics.json", path/"config.json"
+    if not metrics_path.is_file() or not config_path.is_file() or not (path/"tokenizer.json").is_file():
+        raise RuntimeError("PARENT_RUN_DIR must contain metrics.json, config.json, and tokenizer.json.")
+    pm = json.loads(metrics_path.read_text())
+    cfg = Config(**json.loads(config_path.read_text()))
+    steps = pm.get("additional_steps", pm.get("step"))
+    weights = path/f"step-{int(steps):06d}.safetensors"
+    if not weights.is_file():
+        weights = path/"model.safetensors"
+    if not weights.is_file():
+        raise RuntimeError("PARENT_RUN_DIR has no completed SafeTensors weights.")
+    digest = pm.get("weights_sha256")
+    if not digest or sha256(weights)!=digest:
+        raise ValueError("PARENT_RUN_DIR weights hash mismatch.")
+    if config_hash(cfg)!=pm.get("config_sha256"):
+        raise ValueError("PARENT_RUN_DIR config hash mismatch.")
+    if model_size=="50M":
+        expected = load_model_config(Path(repo_dir)/CONFIG_50M)
+        shape = (cfg.vocab_size,cfg.context,cfg.width,cfg.heads,cfg.layers)
+        want = tuple(expected[k] for k in ("vocab_size","context","width","heads","layers"))
+        if shape!=want:
+            raise ValueError("PARENT_RUN_DIR is not the 50M Bloom-0.2 config.")
+        if pm.get("parameters") not in (None, PARAM_COUNT_50M):
+            raise ValueError("PARENT_RUN_DIR is not a 54.8M checkpoint.")
+    elif (cfg.width, cfg.layers)==(640, 10):
+        raise ValueError("PARENT_RUN_DIR looks like the 50M model; set MODEL to 50M.")
+    revision = "local:"+path.name+":"+digest
+    return path, cfg, pm, weights, revision
+
+def load_hub_parent(api, repo, token=None):
+    """Load merged weights from a Hugging Face model repo such as Bloom-Text-0.2."""
+    from huggingface_hub import snapshot_download
+    from bloom.model import Config
+    try:
+        revision = api.model_info(repo).sha
+    except Exception as exc:
+        raise RuntimeError(
+            "Could not load %s. Set PARENT_RUN_DIR to a completed 50M pretraining folder, or wait until that repo has merged weights." % repo
+        ) from exc
+    if not revision:
+        raise RuntimeError("Parent revision unavailable: "+repo)
+    parent = Path(snapshot_download(repo,revision=revision,token=token,
+                   allow_patterns=["config.json","tokenizer.json","metrics.json","model.safetensors"]))
+    if not (parent/"model.safetensors").is_file() or not (parent/"metrics.json").is_file() or not (parent/"config.json").is_file():
+        raise RuntimeError(
+            "%s does not yet have merged weights. Set PARENT_RUN_DIR to the completed 50M run folder." % repo
+        )
+    pm = json.loads((parent/"metrics.json").read_text())
+    cfg = Config(**json.loads((parent/"config.json").read_text()))
+    return parent, cfg, pm, parent/"model.safetensors", revision
+
 def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover=False,
-                 model_size="14M", device=None):
+                 model_size="14M", device=None, parent_run_dir=None):
     import torch
     from torch.utils.data import DataLoader
     from huggingface_hub import snapshot_download
     from tokenizers import Tokenizer
     from bloom.model import Bloom,Config
     from bloom.checkpoint import config_hash,load_weights,save_weights
-    if model_size not in TARGET_REPOS or recipe not in RECIPES or type(steps) is not int or not 1<=steps<=10000:
+    if model_size not in TEXT_REPOS or recipe not in RECIPES or type(steps) is not int or not 1<=steps<=10000:
         raise ValueError("Choose 14M or 50M, a known dataset, and 1–10,000 steps.")
+    if parent_run_dir and model_size=="50M" and RECIPES[recipe][0]!="instruction-tuning":
+        raise ValueError("PARENT_RUN_DIR is for instruction fine-tuning from a completed 50M run, not from-scratch pretraining.")
     device = device or pick_device()
     if device not in ("cuda","mps","cpu"):
         raise ValueError("Unsupported device.")
@@ -185,16 +258,18 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
     out.mkdir(parents=True,exist_ok=True)
     track,_ = RECIPES[recipe]
     instruction = track=="instruction-tuning"
-    from_scratch = model_size=="50M"
-    target_repo = TARGET_REPOS[model_size]
+    from_scratch = model_size=="50M" and not instruction
+    target_repo_id = target_repo(model_size, recipe)
     # Always read the canonical 14M tokenizer; never write back to Bloom-Text-0.1.
     tokenizer_revision = api.model_info(REPO_ID).sha
     if not tokenizer_revision:
         raise RuntimeError("Canonical tokenizer revision unavailable.")
-    parent = Path(snapshot_download(REPO_ID,revision=tokenizer_revision,token=api.token,
+    tokenizer_root = Path(snapshot_download(REPO_ID,revision=tokenizer_revision,token=api.token,
                    allow_patterns=["config.json","tokenizer.json","metrics.json","model.safetensors"]))
-    tok = Tokenizer.from_file(str(parent/"tokenizer.json"))
+    tok = Tokenizer.from_file(str(tokenizer_root/"tokenizer.json"))
     eot = tok.token_to_id("<|endoftext|>")
+    parent = tokenizer_root
+    target_revision = None
     if from_scratch:
         cfg = Config(**load_model_config(Path(repo_dir)/CONFIG_50M))
         if eot is None or tok.get_vocab_size()!=cfg.vocab_size:
@@ -206,29 +281,48 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
             torch.nn.init.normal_(model.tokens.weight, mean=0.0, std=0.02)
             torch.nn.init.normal_(model.positions.weight, mean=0.0, std=0.02)
         try:
-            revision = api.model_info(target_repo).sha
+            revision = api.model_info(target_repo_id).sha
         except Exception:
             revision = None
+        target_revision = revision
         pm = {"step":0,"weights_sha256":None,"train_tokens":0}
         batch_size,grad_accum,lr = 8,4,3e-4
         params_expected = PARAM_COUNT_50M
     else:
-        revision = tokenizer_revision
-        pm = json.loads((parent/"metrics.json").read_text())
-        cfg = Config(**json.loads((parent/"config.json").read_text()))
+        if parent_run_dir:
+            parent, cfg, pm, weight_path, revision = load_local_parent(parent_run_dir, model_size, repo_dir)
+            tok = Tokenizer.from_file(str(parent/"tokenizer.json"))
+            eot = tok.token_to_id("<|endoftext|>")
+        elif model_size=="50M":
+            parent, cfg, pm, weight_path, revision = load_hub_parent(api, TEXT_REPOS["50M"], token=api.token)
+        else:
+            revision = tokenizer_revision
+            pm = json.loads((parent/"metrics.json").read_text())
+            cfg = Config(**json.loads((parent/"config.json").read_text()))
+            weight_path = parent/"model.safetensors"
         if eot is None or tok.get_vocab_size()!=cfg.vocab_size or config_hash(cfg)!=pm["config_sha256"]:
-            raise ValueError("Canonical tokenizer/config verification failed.")
+            raise ValueError("Parent tokenizer/config verification failed.")
         seed = 47+int(pm["step"])
         torch.manual_seed(seed)
         model = Bloom(cfg)
-        model.load_state_dict(load_weights(parent/"model.safetensors",pm["weights_sha256"],model.state_dict()),strict=True)
-        batch_size,grad_accum,lr = 16,2,5e-5
-        params_expected = None
+        model.load_state_dict(load_weights(weight_path,pm["weights_sha256"],model.state_dict()),strict=True)
+        if model_size=="50M":
+            batch_size,grad_accum,lr = 8,4,5e-5
+            params_expected = PARAM_COUNT_50M
+        else:
+            batch_size,grad_accum,lr = 16,2,5e-5
+            params_expected = None
+        try:
+            target_revision = api.model_info(target_repo_id).sha
+        except Exception:
+            target_revision = None
+        if target_repo_id==TEXT_REPOS[model_size] and not parent_run_dir:
+            target_revision = revision
     model.to(device)
     params = sum(p.numel() for p in model.parameters())
     if params_expected is not None and params!=params_expected:
         raise RuntimeError(f"50M config produced {params} parameters, expected {params_expected}.")
-    print("Model:",model_size,"| target:",target_repo,"| device:",device,
+    print("Model:",model_size,"| target:",target_repo_id,"| device:",device,
           "| revision:",revision,"| parent step:",pm["step"],"| parameters:",f"{params:,}",flush=True)
     if from_scratch:
         settings = {"recipe":recipe,"steps":steps,"model_size":model_size,
@@ -236,6 +330,13 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
                     "seed":seed,"batch_size":batch_size,"grad_accum":grad_accum,
                     "learning_rate":lr,"tokenizer_sha256":sha256(parent/"tokenizer.json")}
         cache_revision = tokenizer_revision
+    elif uses_chat_repo(model_size, recipe) or parent_run_dir:
+        settings = {"recipe":recipe,"steps":steps,"model_size":model_size,
+                    "parent_revision":revision,"target_repo":target_repo_id,
+                    "target_revision":target_revision,"parent_run_dir":str(parent_run_dir or ""),
+                    "seed":seed,"batch_size":batch_size,"grad_accum":grad_accum,
+                    "learning_rate":lr,"tokenizer_sha256":sha256(parent/"tokenizer.json")}
+        cache_revision = revision
     else:
         settings = {"recipe":recipe,"steps":steps,"parent_revision":revision,"seed":seed,"batch_size":batch_size,
                     "grad_accum":grad_accum,"learning_rate":lr,"tokenizer_sha256":sha256(parent/"tokenizer.json")}
@@ -320,7 +421,7 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
                "cumulative_train_tokens":cumulative,
                "cumulative_train_tokens_scope":cumulative_scope,
                "training_track":track,"dataset":recipe,"device":device,
-               "model_size":model_size,"target_repo":target_repo,
+               "model_size":model_size,"target_repo":target_repo_id,"target_revision":target_revision,
                "validation_loss_scope":"response targets only" if instruction else "next-token targets",
                "val_loss":report["candidate_val_loss"],"parent_val_loss_same_windows":report["parent_val_loss"],
                "source_val_losses":report["candidate_source_val_losses"],

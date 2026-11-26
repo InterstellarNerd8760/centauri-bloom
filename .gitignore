@@ -8,3 +8,4 @@ runs/
 checkpoints/
 *.safetensors
 .env
+bloom_instruction_expanded.json
