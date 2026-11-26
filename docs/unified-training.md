@@ -29,3 +29,9 @@ Each run stores its settings, pinned parent, token windows, provenance, periodic
 ## Historical notebooks
 
 Older notebooks remain at their original paths for reproducibility and existing links. Do not start new continuation runs from them. The original scratch experiment and contributor smoke test are distinct from canonical continuation.
+
+## GGUF inference export
+
+The final upload cell exports `bloom-f32.gguf` from the exact completed SafeTensors checkpoint and submits it in the same candidate PR alongside all existing artifacts. SafeTensors remains canonical for training. The exporter verifies the checkpoint and config hashes, accepts only a compatible GPT-2 byte-level BPE tokenizer, preserves full F32 weights and reads tensors back to check equality. The GPT-2 mapping is experimental; test actual llama.cpp tokenization and logits before calling it a supported runtime. If conversion fails, the original run remains saved and can be retried using upload recovery. Never retrain just to regenerate an export.
+
+To add GGUF to the current merged Hugging Face model without training, open upload recovery, choose CURRENT_MODEL, authorize an HF write token and run the final cell. It pins the current revision and submits a GGUF-only PR. Review and merge only if its source-weight digest matches the current SafeTensors file. No other model artifacts are changed. Choose COMPLETED_RUN for the original recovery behavior.

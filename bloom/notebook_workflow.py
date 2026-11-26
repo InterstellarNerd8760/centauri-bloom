@@ -119,6 +119,10 @@ def submit_candidate(api, repo, out_dir, steps, revision, run_name):
         return json.loads(receipt.read_text())
     if api.model_info(repo).sha != revision:
         raise RuntimeError("Main changed during training. Preserve the candidate; do not overwrite the newer checkpoint.")
+    # Export the exact candidate, not a stale GGUF from the parent revision.
+    # Do this only after all checkpoint/provenance checks; no training is rerun.
+    from bloom.gguf_export import GGUF_NAME, export_candidate
+    paths[GGUF_NAME] = export_candidate(out, steps, metrics)
     operations = [CommitOperationAdd(path_in_repo=n, path_or_fileobj=str(p)) for n, p in paths.items()]
     try:
         result = api.create_commit(repo_id=repo, operations=operations, revision="main",
