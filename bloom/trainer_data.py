@@ -64,7 +64,12 @@ JARON_MIX_CAP = 8000
 INSTRUCT_MIX_TRAIN_CAP = 24000
 INSTRUCT_MIX_MAX_REPEAT = 8
 
-def needs_jaron(recipe):
+def needs_jaron(recipe, stage="sft", rft_train=False):
+    """Jaron is not required for a yield-only RFT pilot."""
+    if stage == "rft" and not rft_train:
+        return False
+    if stage in ("rft", "rft-baseline"):
+        return recipe in ("Jaron", INSTRUCT_MIX)
     return recipe in ("Jaron", INSTRUCT_MIX)
 
 def instruct_mix_weights():
