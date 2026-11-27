@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 from bloom.notebook_workflow import parent_total, pick_device, save_corpus, restore_corpus, sha256
-from bloom.trainer_data import RECIPES, INSTRUCT_MIX, encode_pairs, needs_jaron, prepare, stream_instruct_source
+from bloom.trainer_data import RECIPES, INSTRUCT_MIX, PRETRAIN_CONTINUE_BUDGETS, encode_pairs, needs_jaron, prepare, stream_instruct_source
 from bloom.rft import (
     MAX_NEW_TOKENS, RFT_LR, RFT_TEMPERATURE,
     REPLAY_FRACTION, SAMPLES_PER_PROMPT, STAGES, chat_parent_revisions, evaluate_locked,
@@ -21,6 +21,26 @@ CHAT_REPOS = {"14M": "Centauri-Bloom/Bloom-Chat-0.1", "50M": "Centauri-Bloom/Blo
 TARGET_REPOS = TEXT_REPOS
 CONFIG_50M = "configs/bloom-0.2-50m.json"
 PARAM_COUNT_50M = 54_807_040
+PRETRAIN_CONTINUE_STAGE = "pretrain-continue"
+PRETRAIN_CONTINUE_LR = 1e-4
+
+def is_pretrain_recipe(recipe):
+    return recipe in RECIPES and RECIPES[recipe][0] != "instruction-tuning"
+
+def text_pr_base_revision(target_repo_id, model_size, parent_run_dir, parent_revision, target_main_sha):
+    """Choose the Hugging Face PR base for a text-repo candidate.
+
+    Instruction fine-tunes upload to a Chat repo, so the caller already passes
+    that repo's main SHA as target_main_sha. For 14M, and for a 50M parent that
+    already is main, the parent SHA is the PR base. An unmerged 50M parent
+    such as refs/pr/1 must not become the base: submit_candidate compares the
+    base to current main and would refuse the upload.
+    """
+    if parent_run_dir:
+        return target_main_sha
+    if target_repo_id == TEXT_REPOS[model_size] and (parent_revision == target_main_sha or target_main_sha is None):
+        return parent_revision
+    return target_main_sha
 
 def target_repo(model_size, recipe, stage="sft"):
     """Pretraining stays on Bloom-Text-*; 50M instruction, the open instruct mix, and RFT use Bloom-Chat-*."""
@@ -183,7 +203,7 @@ def train_model(model, train_loader, val_loader, source_loaders, device, steps, 
 
 
 def load_local_parent(path, model_size, repo_dir):
-    """Load a completed trainer run folder as the instruction-tuning parent."""
+    """Load a completed trainer run folder as a parent checkpoint."""
     from bloom.model import Config
     from bloom.checkpoint import config_hash
     path = Path(path)
@@ -260,7 +280,7 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
     from bloom.checkpoint import config_hash,load_weights,save_weights
     stage = stage or "sft"
     if stage not in STAGES:
-        raise ValueError("STAGE must be sft, rft, or rft-baseline.")
+        raise ValueError("STAGE must be sft, pretrain-continue, rft, or rft-baseline.")
     if stage in ("rft", "rft-baseline"):
         if stage == "rft" and not rft_train:
             if type(steps) is not int or not 0 <= steps <= 10000:
@@ -275,10 +295,17 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
             rft_max_new=rft_max_new, rft_temperature=rft_temperature, gsm8k_rows=gsm8k_rows)
     if model_size not in TEXT_REPOS or recipe not in RECIPES or type(steps) is not int or not 1<=steps<=10000:
         raise ValueError("Choose 14M or 50M, a known dataset, and 1–10,000 steps.")
+    if stage == PRETRAIN_CONTINUE_STAGE:
+        if model_size != "50M":
+            raise ValueError("pretrain-continue is implemented for Bloom-Text-0.2 (50M) only.")
+        if not is_pretrain_recipe(recipe):
+            raise ValueError("pretrain-continue needs a pretraining dataset, not an instruction mix.")
     if parent_run_dir and (parent_hf_repo or parent_hf_revision):
         raise ValueError("Set PARENT_RUN_DIR or PARENT_HF_REPO/PARENT_HF_REVISION, not both.")
-    if (parent_run_dir or parent_hf_repo or parent_hf_revision) and model_size=="50M" and RECIPES[recipe][0]!="instruction-tuning":
-        raise ValueError("PARENT_RUN_DIR and PARENT_HF_* are for instruction fine-tuning, not from-scratch pretraining.")
+    if ((parent_run_dir or parent_hf_repo or parent_hf_revision)
+            and model_size=="50M" and is_pretrain_recipe(recipe)
+            and stage != PRETRAIN_CONTINUE_STAGE):
+        raise ValueError("PARENT_RUN_DIR and PARENT_HF_* are for instruction fine-tuning or pretrain-continue, not from-scratch pretraining. Set STAGE to pretrain-continue to resume Bloom-Text-0.2.")
     device = device or pick_device()
     if device not in ("cuda","mps","cpu"):
         raise ValueError("Unsupported device.")
@@ -309,7 +336,7 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
     out.mkdir(parents=True,exist_ok=True)
     track,_ = RECIPES[recipe]
     instruction = track=="instruction-tuning"
-    from_scratch = model_size=="50M" and not instruction
+    from_scratch = model_size=="50M" and not instruction and stage != PRETRAIN_CONTINUE_STAGE
     target_repo_id = target_repo(model_size, recipe)
     # Always read the canonical 14M tokenizer; never write back to Bloom-Text-0.1.
     tokenizer_revision = api.model_info(REPO_ID).sha
@@ -367,17 +394,18 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
         model = Bloom(cfg)
         model.load_state_dict(load_weights(weight_path,pm["weights_sha256"],model.state_dict()),strict=True)
         if model_size=="50M":
-            batch_size,grad_accum,lr = 8,4,5e-5
+            batch_size,grad_accum = 8,4
+            lr = PRETRAIN_CONTINUE_LR if stage==PRETRAIN_CONTINUE_STAGE else 5e-5
             params_expected = PARAM_COUNT_50M
         else:
             batch_size,grad_accum,lr = 16,2,5e-5
             params_expected = None
         try:
-            target_revision = api.model_info(target_repo_id).sha
+            target_main = api.model_info(target_repo_id).sha
         except Exception:
-            target_revision = None
-        if target_repo_id==TEXT_REPOS[model_size] and not parent_run_dir:
-            target_revision = revision
+            target_main = None
+        target_revision = text_pr_base_revision(
+            target_repo_id, model_size, parent_run_dir, revision, target_main)
     model.to(device)
     params = sum(p.numel() for p in model.parameters())
     if params_expected is not None and params!=params_expected:
@@ -390,7 +418,7 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
                     "seed":seed,"batch_size":batch_size,"grad_accum":grad_accum,
                     "learning_rate":lr,"tokenizer_sha256":sha256(parent/"tokenizer.json")}
         cache_revision = tokenizer_revision
-    elif uses_chat_repo(model_size, recipe) or parent_run_dir:
+    elif uses_chat_repo(model_size, recipe) or parent_run_dir or stage==PRETRAIN_CONTINUE_STAGE:
         settings = {"recipe":recipe,"steps":steps,"model_size":model_size,
                     "parent_revision":revision,"target_repo":target_repo_id,
                     "target_revision":target_revision,"parent_run_dir":str(parent_run_dir or ""),
@@ -430,7 +458,8 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
         if settings_path.exists():
             raise RuntimeError("Run directory already initialized. Use recovery or a new folder.")
         settings_path.write_text(json.dumps(settings,indent=2))
-        t,v,sources,meta = prepare(recipe,repo_dir,tok,cfg.context,eot,seed,jaron_path)
+        continue_budgets = PRETRAIN_CONTINUE_BUDGETS.get(recipe) if stage==PRETRAIN_CONTINUE_STAGE else None
+        t,v,sources,meta = prepare(recipe,repo_dir,tok,cfg.context,eot,seed,jaron_path,budgets=continue_budgets)
         provenance.write_text(json.dumps(meta,indent=2))
         save_corpus(cache,t,v,cache_revision,{k:DataLoader(s) for k,s in sources.items()})
     shutil.copyfile(parent/"tokenizer.json",out/"tokenizer.json")
@@ -489,11 +518,14 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
                "train_examples":len(t),"validation_examples":len(v),"seed":seed,"learning_rate":lr,
                "batch_size":batch_size,"grad_accum":grad_accum,
                "optimizer_state_restored":restored_optimizer,"use_tinystories":"TinyStories" in recipe,
+               "stage":stage,
                "data_provenance_sha256":sha256(provenance),"evaluation_sha256":sha256(out/"evaluation.json")}
     if from_scratch:
         metrics["init"] = "random"
         metrics["tokenizer_source"] = REPO_ID
         metrics["tokenizer_revision"] = tokenizer_revision
+    elif stage==PRETRAIN_CONTINUE_STAGE:
+        metrics["init"] = "continued-from-parent"
     if instruction:
         metrics["prompt_format"] = "User: {prompt}\\nAssistant:"
     # Final checkpoint is the last saved step; no duplication of the large file.

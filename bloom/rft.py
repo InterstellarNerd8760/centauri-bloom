@@ -27,7 +27,7 @@ RFT_TEMPERATURE = 0.8
 RFT_LR = 2e-5
 REPLAY_FRACTION = 0.25
 CHAT_TEMPLATE = "User: {prompt}\nAssistant:"
-STAGES = ("sft", "rft", "rft-baseline")
+STAGES = ("sft", "pretrain-continue", "rft", "rft-baseline")
 CHAT_PARENT_REPOS = {
     "14M": "Centauri-Bloom/Bloom-Chat-0.1",
     "50M": "Centauri-Bloom/Bloom-Chat-0.2",

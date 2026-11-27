@@ -82,6 +82,23 @@ RECIPE_BUDGETS = {
         "TinyStories": 500_000,
     },
 }
+# Larger unique-token budgets for continued 50M pretraining. The from-scratch
+# recipe above is unchanged. FineWeb-Edu sample-10BT is about 10B tokens.
+PRETRAIN_CONTINUE_BUDGETS = {
+    "FineWeb-Edu + literature + TinyStories": {
+        "FineWeb-Edu": 100_000_000,
+        "TinyStories": 2_500_000,
+    },
+    "FineWeb-Edu + TinyStories": {
+        "FineWeb-Edu": 100_000_000,
+        "TinyStories": 2_500_000,
+    },
+    "FineWeb-Edu": {"FineWeb-Edu": 100_000_000},
+}
+# stream_source stops after this many shuffled rows. 100M FineWeb tokens at the
+# measured ~1,216 tokens/document from Text-0.2 needs ~86k documents; keep
+# headroom if a later shuffle draws shorter pages.
+STREAM_ROW_LIMIT = 400_000
 SOURCES = {
     "FineWeb-Edu": ("HuggingFaceFW/fineweb-edu", "sample-10BT", "ODC-By 1.0; underlying web rights vary", 7_500_000),
     "TinyStories": ("roneneldan/TinyStories", None, "CDLA-Sharing-1.0 (dataset card)", 2_500_000),
@@ -180,7 +197,7 @@ def stream_source(name, tok, context, seed, seen, budget=None):
     docs = {"train":[],"validation":[]}
     used = {"train":0,"validation":0}
     records = []
-    for row in islice(data,150_000):
+    for row in islice(data, STREAM_ROW_LIMIT):
         text = row.get("text")
         if not isinstance(text,str) or not text.strip():
             continue
@@ -513,7 +530,7 @@ def prepare_instruct_mix(tokenizer, context, eot, seed, jaron_path, source_loade
             "train_count": len(t), "validation_count": len(v), "sources": metadata}
     return t, v, source_sets, meta
 
-def prepare(recipe, repo, tokenizer, context, eot, seed, jaron_path=None):
+def prepare(recipe, repo, tokenizer, context, eot, seed, jaron_path=None, budgets=None):
     """Return train/validation datasets, per-source validation sets, and provenance."""
     import torch
     from torch.utils.data import TensorDataset
@@ -538,7 +555,7 @@ def prepare(recipe, repo, tokenizer, context, eot, seed, jaron_path=None):
                       train_count=len(t),validation_count=len(v),split="normalized prompt hash; 10% held out")
         return t,v,{},{"recipe":recipe,"training_track":track,"sources":[source]}
     seen, train_sets, val_sets, metadata = set(), [], {}, []
-    budgets = RECIPE_BUDGETS.get(recipe, {})
+    budgets = RECIPE_BUDGETS.get(recipe, {}) if budgets is None else budgets
     for name in names:
         if name=="Public-domain literature":
             tr,va,meta = public_domain(repo,tokenizer)
