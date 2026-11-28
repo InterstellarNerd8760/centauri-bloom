@@ -199,3 +199,9 @@ def test_instruct_mix_v2_shares_caps_and_repeats(tmp_path, monkeypatch):
     assert sum(s["mixed_train_count"] for s in by.values()) == len(t) <= 800
     assert by["OpenAssistant OASST1"]["mixed_train_count"] <= 4 * by["OpenAssistant OASST1"]["unique_train"]
     assert provenance_is_private_safe(meta)
+
+
+def test_cleaned_jaron_v2_hash_is_allowlisted_next_to_v1():
+    from bloom.trainer_data import JARON_SHA, JARON_V2_SHA, KNOWN_JARON_SHAS
+    assert KNOWN_JARON_SHAS[JARON_V2_SHA] == "bloom_instruction_expanded_v2"
+    assert JARON_SHA in KNOWN_JARON_SHAS and JARON_V2_SHA != JARON_SHA

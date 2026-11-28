@@ -16,6 +16,8 @@ JARON_SHA = "2b9f251e0c0ae172e867845e9accaed7a2d59af16b047eb24e0c4176f62b60da"
 JARON_V2_SHA = "395fbe80c62ed9890a1646944d9b266a2825936c2e0dee6adc913fcc5fef88b0"
 KNOWN_JARON_SHAS = {
     JARON_SHA: "bloom_instruction_expanded",
+    # Cleaned v2: 99,971 pairs (the 100,000-row attachment minus 29 rows that overlapped the locked eval).
+    JARON_V2_SHA: "bloom_instruction_expanded_v2",
 }
 INSTRUCT_MIX = "Instruct mix (Jaron + open)"
 INSTRUCT_MIX_V2 = "Instruct mix v2 (Jaron v2 + open)"
