@@ -1,5 +1,7 @@
 # Bloom reinforcement learning plan
 
+Update: the broader response-level design (GRPO or best-of-n, rule-based rewards, held-out checks) is in [post-training.md](post-training.md). The text below describes the earlier rejection-sampling pilot.
+
 Status: first experiment implemented as a rejection-sampling (RFT) *pilot* in the unified trainer. DPO, GRPO, TRL, and playground feedback are intentionally not built yet.
 
 Bloom-Chat-0.2 is a custom 50M PyTorch model (width 640, 10 layers, context 512, 8,192-token BPE) after one supervised fine-tune on the Jaron + Dolly + OASST1 + GSM8K mix. The chat template is `User: {prompt}\nAssistant:`. Validation loss fell from about 3.06 to 2.10, and the model now answers instead of echoing, but it still misses easy arithmetic (for example, 12 × 5) and sometimes repeats itself. The playground at westonrosch.com/projects/centauri-bloom/ runs weights in the browser. Compute is free Kaggle T4 GPUs (about 30 hours a week).
