@@ -13,10 +13,15 @@ from bloom.notebook_workflow import sha256
 JARON_SHA = "2b9f251e0c0ae172e867845e9accaed7a2d59af16b047eb24e0c4176f62b60da"
 # Reviewed contributor files only. A later file can be added here after a quality check;
 # load_jaron_sources combines allowlisted files and instruction_pairs de-duplicates them.
+JARON_V2_SHA = "395fbe80c62ed9890a1646944d9b266a2825936c2e0dee6adc913fcc5fef88b0"
 KNOWN_JARON_SHAS = {
     JARON_SHA: "bloom_instruction_expanded",
+    # Cleaned v2: 99,971 pairs (the 100,000-row attachment minus 29 rows that overlapped the locked eval).
+    JARON_V2_SHA: "bloom_instruction_expanded_v2",
 }
 INSTRUCT_MIX = "Instruct mix (Jaron + open)"
+INSTRUCT_MIX_V2 = "Instruct mix v2 (Jaron v2 + open)"
+INSTRUCT_MIXES = (INSTRUCT_MIX, INSTRUCT_MIX_V2)
 RECIPES = {
     "Jaron": ("instruction-tuning", ()),
     "FineWeb-Edu + TinyStories": ("fineweb-edu-replay", ("FineWeb-Edu", "TinyStories")),
@@ -28,6 +33,7 @@ RECIPES = {
     "FineWeb-Edu + literature + TinyStories": ("pretraining", ("FineWeb-Edu", "Public-domain literature", "TinyStories")),
     "Arithmetic instruction pilot": ("instruction-tuning", ()),
     INSTRUCT_MIX: ("instruction-tuning", ()),
+    INSTRUCT_MIX_V2: ("instruction-tuning", ()),
 }
 # Open instruction sources mixed with Jaron. Caps are unique examples after
 # conversion, license/PII filters, and the 512-token chat-template fit check.
@@ -63,17 +69,29 @@ JARON_MIX_WEIGHT = 4
 JARON_MIX_CAP = 8000
 INSTRUCT_MIX_TRAIN_CAP = 24000
 INSTRUCT_MIX_MAX_REPEAT = 8
+# Per-recipe mix settings. The v2 recipe is for the larger cleaned Jaron file (about 100k pairs). Jaron may
+# contribute up to 30,000 unique pairs inside a 48,000-example training mix, so most of its arithmetic,
+# conversion and coding drills are used instead of being cut to 8,000. The open sources keep the same
+# licenses and filters, with caps raised so Dolly and GSM8K are not repeated; OASST1 has only about 2,000
+# usable first-turn English replies, so its share is halved to keep it under about 3 passes (the v1 mix
+# repeats it about 5 times).
+MIX_SETTINGS = {
+    INSTRUCT_MIX: {"jaron_cap": JARON_MIX_CAP, "train_cap": INSTRUCT_MIX_TRAIN_CAP,
+                   "max_repeat": INSTRUCT_MIX_MAX_REPEAT, "caps": {}, "weights": {}},
+    INSTRUCT_MIX_V2: {"jaron_cap": 30000, "train_cap": 48000, "max_repeat": 4,
+                      "caps": {"Dolly-15k": 11000, "OpenAssistant OASST1": 5000, "GSM8K": 6500},
+                      "weights": {"OpenAssistant OASST1": 1}},
+}
 
 def needs_jaron(recipe, stage="sft", rft_train=False):
     """Jaron is not required for a yield-only RFT pilot."""
     if stage == "rft" and not rft_train:
         return False
-    if stage in ("rft", "rft-baseline"):
-        return recipe in ("Jaron", INSTRUCT_MIX)
-    return recipe in ("Jaron", INSTRUCT_MIX)
+    return recipe == "Jaron" or recipe in INSTRUCT_MIXES
 
-def instruct_mix_weights():
-    return {"Jaron": JARON_MIX_WEIGHT, **{name: spec["weight"] for name, spec in INSTRUCT_SOURCES.items()}}
+def instruct_mix_weights(recipe=INSTRUCT_MIX):
+    base = {"Jaron": JARON_MIX_WEIGHT, **{name: spec["weight"] for name, spec in INSTRUCT_SOURCES.items()}}
+    return {**base, **MIX_SETTINGS[recipe]["weights"]}
 # Optional per-source train token budgets. Unlisted sources use SOURCES defaults
 # or, for public-domain literature, the full verified corpus.
 RECIPE_BUDGETS = {
@@ -487,16 +505,20 @@ def _cap_split(rows, cap, seed):
     random.Random(seed).shuffle(rows)
     return rows[:cap]
 
-def prepare_instruct_mix(tokenizer, context, eot, seed, jaron_path, source_loader=stream_instruct_source):
+def prepare_instruct_mix(tokenizer, context, eot, seed, jaron_path, source_loader=stream_instruct_source,
+                         recipe=INSTRUCT_MIX):
     if not jaron_path:
         raise ValueError("Instruct mix requires the original Jaron JSON.")
+    mix = MIX_SETTINGS[recipe]
+    jaron_cap, train_cap, max_repeat = mix["jaron_cap"], mix["train_cap"], mix["max_repeat"]
+    weights = instruct_mix_weights(recipe)
     raw_jaron, file_meta = load_jaron_sources(jaron_path)
     jaron_rows = filter_pairs(raw_jaron, tokenizer, context, eot)
     source_rows = {"Jaron": jaron_rows}
     metadata = [{"name": "Jaron", "dataset": "Jaron instruction expanded",
                  "source_sha256": file_meta[0]["source_sha256"] if len(file_meta)==1 else [f["source_sha256"] for f in file_meta],
                  "files": file_meta, "source_count": len(raw_jaron), "filtered_count": len(jaron_rows),
-                 "cap": JARON_MIX_CAP, "weight": JARON_MIX_WEIGHT,
+                 "cap": jaron_cap, "weight": weights["Jaron"],
                  "note": "Private contributor input; raw examples are not uploaded. Confirm permission and review accuracy. No public license is recorded in this repository. Multiple reviewed files are combined and de-duplicated."}]
     for name in INSTRUCT_SOURCES:
         rows, meta = source_loader(name, tokenizer, context, eot)
@@ -504,11 +526,11 @@ def prepare_instruct_mix(tokenizer, context, eot, seed, jaron_path, source_loade
         metadata.append(meta)
     trains, vals = {}, {}
     for name, rows in source_rows.items():
-        cap = JARON_MIX_CAP if name == "Jaron" else INSTRUCT_SOURCES[name]["cap"]
+        cap = jaron_cap if name == "Jaron" else mix["caps"].get(name, INSTRUCT_SOURCES[name]["cap"])
         train, val = instruction_pairs(rows)
         trains[name] = _cap_split(train, cap, seed)
         vals[name] = _cap_split(val, max(32, cap // 10), seed)
-    mixed_train, train_used = weighted_mix(trains, instruct_mix_weights(), INSTRUCT_MIX_TRAIN_CAP, seed)
+    mixed_train, train_used = weighted_mix(trains, weights, train_cap, seed, max_repeat=max_repeat)
     mixed_val, val_used = [], {}
     for name, rows in vals.items():
         val_used[name] = len(rows)
@@ -521,12 +543,14 @@ def prepare_instruct_mix(tokenizer, context, eot, seed, jaron_path, source_loade
     source_sets = {name: encode_pairs(rows, tokenizer, context, eot) for name, rows in vals.items() if rows}
     for src in metadata:
         name = src["name"]
-        src.update(unique_train=len(trains.get(name, [])), unique_validation=len(vals.get(name, [])),
+        src.update(cap=jaron_cap if name == "Jaron" else mix["caps"].get(name, INSTRUCT_SOURCES[name]["cap"]),
+                   weight=weights[name],
+                   unique_train=len(trains.get(name, [])), unique_validation=len(vals.get(name, [])),
                    mixed_train_count=train_used.get(name, 0), mixed_validation_count=val_used.get(name, 0),
                    split="normalized prompt hash; 10% held out; unique caps then weighted upsample of train")
-    meta = {"recipe": INSTRUCT_MIX, "training_track": "instruction-tuning",
+    meta = {"recipe": recipe, "training_track": "instruction-tuning",
             "prompt_format": "User: {prompt}\\nAssistant:", "loss": "assistant tokens only",
-            "train_cap": INSTRUCT_MIX_TRAIN_CAP, "max_repeat": INSTRUCT_MIX_MAX_REPEAT,
+            "train_cap": train_cap, "max_repeat": max_repeat,
             "train_count": len(t), "validation_count": len(v), "sources": metadata}
     return t, v, source_sets, meta
 
@@ -536,8 +560,8 @@ def prepare(recipe, repo, tokenizer, context, eot, seed, jaron_path=None, budget
     from torch.utils.data import TensorDataset
     track,names = RECIPES[recipe]
     if track=="instruction-tuning":
-        if recipe==INSTRUCT_MIX:
-            return prepare_instruct_mix(tokenizer, context, eot, seed, jaron_path)
+        if recipe in INSTRUCT_MIXES:
+            return prepare_instruct_mix(tokenizer, context, eot, seed, jaron_path, recipe=recipe)
         if recipe=="Jaron":
             rows, file_meta = load_jaron_sources(jaron_path)
             source = {"dataset":"Jaron instruction expanded",

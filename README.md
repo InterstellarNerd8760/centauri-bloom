@@ -28,6 +28,7 @@ GitHub is the canonical home for project documentation, source code, technical d
 - [Architecture](docs/architecture.md) — model and collaborative training protocol.
 - [Roadmap](docs/roadmap.md) — development milestones.
 - [Historical notebooks](notebooks/) — retained for reproducibility; use the unified trainer for new continuation runs.
+- [Post-training plan](docs/post-training.md) — SFT then response-level RL notebooks for Bloom Text 0.2.
 - [Training guide](docs/training.md) — saved baseline, CPU/CUDA and continuation.
 - [Text dataset and tokenizer](docs/text-dataset.md) — offline example, corpus reconstruction and checkpoint metadata.
 - [Governance](GOVERNANCE.md) and [contributing](CONTRIBUTING.md) — community workflow.
