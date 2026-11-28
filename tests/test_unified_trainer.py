@@ -9,7 +9,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from bloom.model import Bloom, Config
 from bloom.trainer import CHAT_REPOS, TEXT_REPOS, collate_instruction, target_repo, train_model
 from bloom.trainer_data import (
-    INSTRUCT_MIX, INSTRUCT_SOURCES, JARON_MIX_WEIGHT, RECIPES, RECIPE_BUDGETS,
+    INSTRUCT_MIX, INSTRUCT_MIX_V2, INSTRUCT_SOURCES, JARON_MIX_WEIGHT, RECIPES, RECIPE_BUDGETS,
     arithmetic_rows, convert_instruct_source, dolly_pair, encode_pairs, encode_windows,
     filter_pairs, fits_instruction, gsm8k_pair, instruction_pairs, needs_jaron,
     oasst_pairs, prepare, prepare_instruct_mix, weighted_mix,
@@ -23,12 +23,13 @@ def test_all_dataset_recipes():
     assert set(RECIPES)=={"Jaron","FineWeb-Edu + TinyStories","FineWeb-Edu","TinyStories",
                          "Cosmopedia","Public-domain literature","Public-domain + TinyStories",
                          "FineWeb-Edu + literature + TinyStories","Arithmetic instruction pilot",
-                         INSTRUCT_MIX}
+                         INSTRUCT_MIX, INSTRUCT_MIX_V2}
     assert RECIPES["FineWeb-Edu + literature + TinyStories"][1]==("FineWeb-Edu","Public-domain literature","TinyStories")
     assert RECIPE_BUDGETS["FineWeb-Edu + literature + TinyStories"]=={"FineWeb-Edu":20_000_000,"TinyStories":500_000}
     assert RECIPES["Jaron"][0]==RECIPES[INSTRUCT_MIX][0]=="instruction-tuning"
     assert RECIPES["FineWeb-Edu + TinyStories"][1]==("FineWeb-Edu","TinyStories")
-    assert needs_jaron("Jaron") and needs_jaron(INSTRUCT_MIX) and not needs_jaron("TinyStories")
+    assert needs_jaron("Jaron") and needs_jaron(INSTRUCT_MIX) and needs_jaron(INSTRUCT_MIX_V2) and not needs_jaron("TinyStories")
+    assert target_repo("50M", INSTRUCT_MIX_V2)==CHAT_REPOS["50M"]
     assert target_repo("50M", INSTRUCT_MIX)==CHAT_REPOS["50M"]=="Centauri-Bloom/Bloom-Chat-0.2"
     assert target_repo("50M", "Jaron")=="Centauri-Bloom/Bloom-Chat-0.2"
     assert target_repo("50M", "FineWeb-Edu + literature + TinyStories")==TEXT_REPOS["50M"]

@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 
 from bloom.notebook_workflow import parent_total, pick_device, save_corpus, restore_corpus, sha256
-from bloom.trainer_data import RECIPES, INSTRUCT_MIX, PRETRAIN_CONTINUE_BUDGETS, encode_pairs, needs_jaron, prepare, stream_instruct_source
+from bloom.trainer_data import RECIPES, INSTRUCT_MIX, INSTRUCT_MIXES, PRETRAIN_CONTINUE_BUDGETS, encode_pairs, needs_jaron, prepare, stream_instruct_source
 from bloom.rft import (
     MAX_NEW_TOKENS, RFT_LR, RFT_TEMPERATURE,
     REPLAY_FRACTION, SAMPLES_PER_PROMPT, STAGES, chat_parent_revisions, evaluate_locked,
@@ -52,7 +52,7 @@ def target_repo(model_size, recipe, stage="sft"):
     if model_size not in TEXT_REPOS or recipe not in RECIPES:
         raise ValueError("Choose 14M or 50M and a known dataset.")
     track, _ = RECIPES[recipe]
-    if track == "instruction-tuning" and (model_size == "50M" or recipe == INSTRUCT_MIX):
+    if track == "instruction-tuning" and (model_size == "50M" or recipe in INSTRUCT_MIXES):
         return CHAT_REPOS[model_size]
     return TEXT_REPOS[model_size]
 
@@ -271,7 +271,9 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
                  model_size="14M", device=None, parent_run_dir=None,
                  parent_hf_repo=None, parent_hf_revision=None, stage="sft",
                  rft_mode="pilot", rft_train=False, rft_samples=None,
-                 rft_max_new=None, rft_temperature=None, gsm8k_rows=None):
+                 rft_max_new=None, rft_temperature=None, gsm8k_rows=None, locked_eval=False):
+    """locked_eval: for 50M instruction tuning, also score parent and candidate on the locked eval
+    (greedy, KV-cached) and record both summaries in evaluation.json and metrics.json."""
     import torch
     from torch.utils.data import DataLoader
     from huggingface_hub import snapshot_download
@@ -485,11 +487,25 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
                        "weights_sha256":digest})
         (out/"partial.json").write_text(json.dumps(latest,indent=2))
         print("Saved step",step,"to",out,flush=True)
+    do_locked = bool(locked_eval) and instruction and model_size=="50M"
+    parent_locked = None
+    if do_locked:
+        from bloom.policy_eval import evaluate_locked_fast
+        if start_step==0:
+            parent_locked = evaluate_locked_fast(model,tok,eot,device,repo_dir=repo_dir)["summary"]
+            print("Parent locked eval:",json.dumps(parent_locked),flush=True)
+        else:
+            print("Resumed mid-run: parent locked eval skipped (weights already changed).",flush=True)
     report = train_model(model,train,val,source_loaders,device,steps,grad_accum,lr,seed,checkpoint,
                          lambda:generate_samples(model,tok,cfg.context,eot,device),
                          start_step=start_step,optimizer_file=str(out/"partial-optimizer.pt"),
                          token_counts=token_counts)
     report["parent_revision"] = revision
+    if do_locked:
+        candidate_locked = evaluate_locked_fast(model,tok,eot,device,repo_dir=repo_dir)["summary"]
+        print("Candidate locked eval:",json.dumps(candidate_locked),flush=True)
+        report["parent_locked_eval"] = parent_locked
+        report["candidate_locked_eval"] = candidate_locked
     (out/"evaluation.json").write_text(json.dumps(report,indent=2))
     previous = parent_total(pm)
     if from_scratch:
@@ -528,6 +544,10 @@ def run_training(api, recipe, steps, repo_dir, out_dir, jaron_path=None, recover
         metrics["init"] = "continued-from-parent"
     if instruction:
         metrics["prompt_format"] = "User: {prompt}\\nAssistant:"
+    if do_locked:
+        metrics["parent_locked_eval"] = report["parent_locked_eval"]
+        metrics["candidate_locked_eval"] = report["candidate_locked_eval"]
+        metrics["locked_eval_sha256"] = report["candidate_locked_eval"]["eval_sha256"]
     # Final checkpoint is the last saved step; no duplication of the large file.
     (out/"partial.safetensors").replace(out/f"step-{steps:06d}.safetensors")
     (out/"metrics.json").write_text(json.dumps(metrics,indent=2,sort_keys=True,allow_nan=False))
